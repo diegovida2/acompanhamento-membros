@@ -287,7 +287,8 @@ const tagsHtml=(name,sel)=>`<div class="tags" role="group">${ASSUNTOS.map(a=>`<l
 const COMO_CHEGOU=["Convite de amigo","Família","Redes sociais","Evento","Outro"];
 const DIAS_SEM_CONTATO=15;
 
-let db=null,user=null,downloads=null,meuId=null,podeEditar=true,meuEmail="",meuNome="",ehAdmin=false,meuDep="",migrado=false;
+let db=null,user=null,downloads=null,meuId=null,podeEditar=true,meuEmail="",meuNome="",ehAdmin=false,meuDep="",migrado=false,souAdmin=false,previewDep="";
+const full={membros:[],encontros:[],cuidados:[],eventos:[],planos:[]};
 let membros=[],encontros=[],cuidados=[],eventos=[],planos=[],cfg={};
 const loaded={m:false,e:false,c:false};
 const nomes={};
@@ -375,7 +376,7 @@ function route(){
 function render(){
   const app=$("#app");
   if(!db)return;
-  const ro=podeEditar?"":`<div class="notice">Você está vendo em modo leitura. Peça ao responsável acesso de colaborador para registrar dados.</div>`;
+  const ro=previewDep?`<div class="notice" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span style="flex:1;min-width:200px"><b>Visualizando como Líder de ${esc(depInfo(previewDep).n)}.</b> É exatamente o que esse líder vê. O que você alterar aqui é gravado de verdade.</span><button class="btn sm" data-act="sair-preview">Voltar para Administrador</button></div>`:"";
   if(view==="painel")app.innerHTML=ro+vPainel();
   if(view==="funil")app.innerHTML=ro+vFunil();
   if(view==="plano")app.innerHTML=ro+vPlano();
@@ -388,11 +389,14 @@ function render(){
 function vPainel(){
   if(!membros.length)return `<div class="view-title"><div><h2>Painel</h2><p class="sub">Visão geral do acompanhamento</p></div></div>
   <div class="panel"><h3>Comece cadastrando as pessoas</h3><p class="empty">Cadastre adolescentes e jovens e classifique cada um em Participantes, Em cuidado ou Conectando. Depois, faça a chamada dos encontros para o painel sugerir movimentações.</p><p><button class="btn pri" data-act="novo">Cadastrar pessoa</button></p></div>`;
-  const tot=membros.length,cont={},split={};
-  ORDEM.forEach(g=>{cont[g]=0;split[g]={a:0,j:0}});
-  membros.forEach(m=>{if(cont[m.grupo]==null)return;cont[m.grupo]++;const f=faixa(m);if(f==="Adolescente")split[m.grupo].a++;if(f==="Jovem")split[m.grupo].j++});
+  const tot=membros.length,cont={};
+  ORDEM.forEach(g=>cont[g]=0);
+  membros.forEach(m=>{if(cont[m.grupo]!=null)cont[m.grupo]++});
+  const porDep={};DEPS.forEach(d=>{porDep[d.v]={};ORDEM.forEach(g=>porDep[d.v][g]=0)});
+  membros.forEach(m=>{const p=porDep[faixa(m)];if(p&&p[m.grupo]!=null)p[m.grupo]++});
+  const DVp=ehAdmin?DEPS:DEPS.filter(d=>d.v===meuDep);
   const bar=ORDEM.map(g=>`<span class="c-${g}" style="width:${tot?cont[g]/tot*100:0}%;background:var(--g)"></span>`).join("");
-  const cols=ORDEM.map(g=>`<button class="gcol c-${g}" data-goto-grupo="${g}"><div class="gnum" style="color:var(--g)">${cont[g]}</div><div class="gname">${GRUPOS[g].nome}</div><div class="gdesc">${GRUPOS[g].desc}</div><div class="gsplit">${split[g].a} adolescentes, ${split[g].j} jovens</div></button>`).join("");
+  const cols=ORDEM.map(g=>`<button class="gcol c-${g}" data-goto-grupo="${g}"><div class="gnum" style="color:var(--g)">${cont[g]}</div><div class="gname">${GRUPOS[g].nome}</div><div class="gdesc">${GRUPOS[g].desc}</div></button>`).join("");
 
   const an=new Map(membros.map(m=>[m.id,analise(m)]));
   const sug=membros.map(m=>({m,s:sugestao(m,an.get(m.id))})).filter(x=>x.s);
@@ -422,14 +426,14 @@ function vPainel(){
   const pendSort=pendC.slice().sort((a,b)=>(a.prazo||"9").localeCompare(b.prazo||"9")).slice(0,6);
   const pendHtml=pendSort.length?`<ul class="list">${pendSort.map(c=>{const m=membroPorId(c.membroId);const at=c.prazo&&c.prazo<h;return `<li><span class="chip ${at?"c-atraso":"c-cuidado"}">${at?"Atrasado":"Pendente"}</span><div class="grow"><div class="t">${esc(m?.nome||"Pessoa removida")}</div><div class="m">${esc(c.tipo)} até ${fmt(c.prazo)}</div></div></li>`}).join("")}</ul>`:`<p class="empty">Nenhuma ação pendente.</p>`;
   const fxMap=new Map(membros.map(m=>[m.id,faixa(m)]));
-  const contaF=e=>{let a=0,j=0;(e.presentes||[]).forEach(id=>{const f=fxMap.get(id);if(f==="Adolescente")a++;else if(f==="Jovem")j++});return {a,j,t:(e.presentes||[]).length}};
+  const contaF=e=>{const c={t:(e.presentes||[]).length};DEPS.forEach(d=>c[d.v]=0);(e.presentes||[]).forEach(id=>{const f=fxMap.get(id);if(c[f]!=null)c[f]++});return c};
   const encMes=encontros.filter(e=>(e.data||"").slice(0,7)===mes);
-  const tm=encMes.reduce((s,e)=>{const c=contaF(e);s.a+=c.a;s.j+=c.j;return s},{a:0,j:0});
+  const tm={};DEPS.forEach(d=>tm[d.v]=0);encMes.forEach(e=>{const c=contaF(e);DEPS.forEach(d=>tm[d.v]+=c[d.v])});
   const med=n=>encMes.length?(n/encMes.length).toFixed(1).replace(".",","):"—";
-  const encRows=ult.map(e=>{const c=contaF(e);return `<tr><td>${fmt(e.data)}</td><td>${esc(e.tipo)}${e.titulo?" · "+esc(e.titulo):""}</td><td>${c.a}</td><td>${c.j}</td><td>${c.t}</td></tr>`}).join("");
+  const encRows=ult.map(e=>{const c=contaF(e);return `<tr><td>${fmt(e.data)}</td><td>${esc(e.tipo)}${e.titulo?" · "+esc(e.titulo):""}</td>${DVp.map(d=>`<td>${c[d.v]}</td>`).join("")}<td>${c.t}</td></tr>`}).join("");
 
   return `<div class="view-title"><div><h2>Painel</h2><p class="sub">${tot} pessoas acompanhadas</p></div>${podeEditar?`<button class="btn pri" data-act="novo">Cadastrar pessoa</button>`:""}</div>
-  <div class="deps">${[["Adolescente","a","Adolescentes"],["Jovem","j","Jovens"]].map(([f,k,n])=>{const tt=split.lider[k]+split.participante[k]+split.cuidado[k];return `<section class="panel dep"><div class="dep-h"><div class="big">${tt}</div><div><h3 style="margin:0">${n}</h3><div class="gdesc">Membros: Líderes + Participantes + Em cuidado</div></div></div><div class="dep-g">${ORDEM.map(g=>`<button class="dep-i c-${g}" data-goto-grupo="${g}" data-goto-faixa="${f}"><span class="dot"></span><span>${GRUPOS[g].nome}${(g==="conectando"||g==="ausente")?' <span class="hint">(fora do total)</span>':""}</span><b>${split[g][k]}</b></button>`).join("")}</div></section>`}).join("")}</div>
+  <div class="deps">${DVp.map(d=>{const p=porDep[d.v],tt=p.lider+p.participante+p.cuidado;return `<section class="panel dep" style="border-top:4px solid ${d.c}"><div class="dep-h"><div class="big" style="color:${d.c}">${tt}</div><div><h3 style="margin:0">${d.n}</h3><div class="gdesc">Membros: Líderes + Participantes + Em cuidado</div></div></div><div class="dep-g">${ORDEM.map(g=>`<button class="dep-i c-${g}" data-goto-grupo="${g}" data-goto-faixa="${d.v}"><span class="dot"></span><span>${GRUPOS[g].nome}${(g==="conectando"||g==="ausente")?' <span class="hint">(fora do total)</span>':""}</span><b>${p[g]}</b></button>`).join("")}</div></section>`}).join("")}</div>
   <section class="groups" aria-label="Distribuição por grupo"><div class="bar">${bar}</div><div class="gcols">${cols}</div></section>
   <section class="panel full-span"><h3>Gestão do cuidado</h3><div class="stat-row">
     <div class="stat"><b>${pendC.length}</b><span>Ações pendentes</span></div>
@@ -438,13 +442,10 @@ function vPainel(){
     <div class="stat"><b>${concMes.length?Math.round(noPrazo/concMes.length*100)+"%":"—"}</b><span>Concluídas no prazo</span></div>
     <div class="stat ${cuidSemAcao?"alerta":""}"><b>${cuidSemAcao}</b><span>Em cuidado sem ação agendada</span></div>
   </div><div class="grid2"><div><h4>Assuntos mais abordados (90 dias)</h4>${assHtml}</div><div><h4>Próximas ações</h4>${pendHtml}<p style="margin:8px 0 0"><a href="#cuidado">Abrir o Cuidado</a></p></div></div></section>
-  <section class="panel full-span"><h3>Encontros por faixa</h3><div class="stat-row">
+  <section class="panel full-span"><h3>Encontros por departamento</h3><div class="stat-row">
     <div class="stat"><b>${encMes.length}</b><span>Encontros no mês</span></div>
-    <div class="stat"><b>${tm.a}</b><span>Presenças de adolescentes no mês</span></div>
-    <div class="stat"><b>${tm.j}</b><span>Presenças de jovens no mês</span></div>
-    <div class="stat"><b>${med(tm.a)}</b><span>Adolescentes por encontro</span></div>
-    <div class="stat"><b>${med(tm.j)}</b><span>Jovens por encontro</span></div>
-  </div>${ult.length?`<div class="scroll" style="margin-top:12px"><table class="tbl"><thead><tr><th>Data</th><th>Encontro</th><th>Adolescentes</th><th>Jovens</th><th>Total</th></tr></thead><tbody>${encRows}</tbody></table></div>`:`<p class="empty" style="margin-top:10px">Faça a chamada dos encontros para ver os números.</p>`}</section>
+    ${DVp.map(d=>`<div class="stat"><b>${tm[d.v]}</b><span>Presenças de ${d.n.toLowerCase()} no mês · ${med(tm[d.v])} por encontro</span></div>`).join("")}
+  </div>${ult.length?`<div class="scroll" style="margin-top:12px"><table class="tbl"><thead><tr><th>Data</th><th>Encontro</th>${DVp.map(d=>`<th>${d.n}</th>`).join("")}<th>Total</th></tr></thead><tbody>${encRows}</tbody></table></div>`:`<p class="empty" style="margin-top:10px">Faça a chamada dos encontros para ver os números.</p>`}</section>
   <div class="grid2">
     <section class="panel"><h3>Movimento do mês</h3><div class="stat-row">
       <div class="stat"><b>${novos}</b><span>Novos cadastros</span></div>
@@ -933,7 +934,8 @@ async function cadastrarInscritos(e,idxs){
 /* ---------- administração: acessos e backup ---------- */
 const COLS=["membros","encontros","cuidados","eventos","planos","config"];
 async function dlgAdmin(){
-  if(!ehAdmin)return;
+  if(!souAdmin)return;
+  if(previewDep)setPreview("");
   const d=$("#dlg");d.dataset.id="";d.dataset.ev="";
   d.innerHTML=`<div class="dlg-h"><div><h2>Administração</h2><div class="sub">Acessos e backup</div></div><button class="btn ghost sm" data-close>Fechar</button></div>
   <div class="dlg-b">
@@ -1013,6 +1015,7 @@ document.addEventListener("click",async ev=>{
   if(ds.act==="trocar-conta"){entrar(true);return}
   if(ds.act==="sair"){firebase.auth().signOut().then(()=>location.reload());return}
   if(ds.act==="admin"){dlgAdmin();return}
+  if(ds.act==="sair-preview"){setPreview("");return}
   if(ds.act==="backup-json"){backupJSON();return}
   if(ds.act==="backup-xlsx"){backupXLSX();return}
   if(ds.rmAcesso){if(await confirmar(`Remover o acesso de ${ds.rmAcesso}?`,"Remover")){if(await gravar(()=>db.collection("acessos").doc(ds.rmAcesso).delete(),"Acesso removido"))carregarAcessos()}return}
@@ -1075,6 +1078,7 @@ document.addEventListener("input",ev=>{
   if(ev.target.id==="chBusca"){st.chBusca=ev.target.value;lChamada()}
 });
 document.addEventListener("change",ev=>{
+  if(ev.target.matches&&ev.target.matches("select[data-preview]")){setPreview(ev.target.value);return}
   if(ev.target.id==="ffaixa"){st.faixa=ev.target.value;lPessoas()}
   if(ev.target.id==="flider"){st.lider=ev.target.value;lPessoas()}
   if(ev.target.name==="membroId"&&ev.target.form?.id==="fc")st.ctMembro=ev.target.value;
@@ -1115,9 +1119,28 @@ async function resolverNomes(){
   await Promise.all(ids.map(async id=>{try{const x=await db.collection("usuarios").doc(id).get();if(x.exists)nomes[id]=x.data().nome||x.data().email||""}catch(_){}}));
   agendar();
 }
+function aplicarVisao(){
+  const d=previewDep;
+  membros=d?full.membros.filter(m=>m.faixa===d):full.membros;
+  cuidados=d?full.cuidados.filter(c=>c.departamento===d):full.cuidados;
+  encontros=d?full.encontros.filter(e=>e.departamento===d):full.encontros;
+  eventos=d?full.eventos.filter(e=>e.departamento===d):full.eventos;
+  planos=d?full.planos.filter(p=>p.departamento===d):full.planos;
+}
+function renderUsr(){
+  const sel=souAdmin?` · <label style="font-size:inherit;color:inherit">Ver como <select data-preview style="width:auto;padding:2px 6px;font-size:.78rem;border-radius:6px"><option value="">Administrador</option>${DEPS.map(d=>`<option value="${d.v}" ${previewDep===d.v?"selected":""}>Líder de ${d.n}</option>`).join("")}</select></label>`:"";
+  $("#usr").innerHTML=`${esc(meuEmail)}${!souAdmin&&meuDep?" · Líder de "+esc(depInfo(meuDep).n):""}${sel} · ${souAdmin?`<button class="lnk" data-act="admin">Administração</button> · `:""}<button class="lnk" data-act="sair">Sair</button>`;
+}
+function setPreview(d){
+  previewDep=d||"";ehAdmin=!previewDep;meuDep=previewDep;
+  st.grupo="";st.faixa="";st.lider="";st.planoDep="";st.chamada=null;
+  const dl=$("#dlg");if(dl.open)dl.close();
+  aplicarVisao();renderUsr();render();
+}
 function assinar(col,key,set){
   (ehAdmin||!CAMPO_DEP[col]?db.collection(col):db.collection(col).where(CAMPO_DEP[col],"==",meuDep)).onSnapshot(s=>{
     set(s.docs.map(d=>({id:d.id,...d.data()})));
+    aplicarVisao();
     if(!s.metadata.fromCache)loaded[key]=true;
     if(ehAdmin&&!migrado&&loaded.m&&loaded.c){migrado=true;setTimeout(migrarDeps,500)}
     if(loaded.m&&loaded.e&&loaded.c){clearTimeout(timer);setSync("Dados sincronizados com a equipe")}
@@ -1160,20 +1183,20 @@ async function init(){
     else{try{const x=await fdb.collection("acessos").doc(meuEmail).get();if(x.exists){papel=x.data().papel||"lider";meuDep=x.data().departamento||""}}catch(e){console.error(e)}}
     if(!papel){telaLogin(`O e-mail ${meuEmail} ainda não tem acesso. Peça ao administrador para liberar.`,true,true);return}
     if(papel!=="admin"&&!DEP_VALS.includes(meuDep)){telaLogin(`O acesso de ${meuEmail} ainda não tem departamento definido. Peça ao administrador para ajustar.`,true,true);return}
-    ehAdmin=papel==="admin";if(ehAdmin)meuDep="";podeEditar=true;db=fdb;
+    ehAdmin=papel==="admin";souAdmin=ehAdmin;if(ehAdmin)meuDep="";podeEditar=true;db=fdb;
     document.body.classList.remove("sem-acesso");
-    $("#usr").innerHTML=`${esc(meuEmail)}${!ehAdmin&&meuDep?" · Líder de "+esc(depInfo(meuDep).n):""} · ${ehAdmin?`<button class="lnk" data-act="admin">Administração</button> · `:""}<button class="lnk" data-act="sair">Sair</button>`;
+    renderUsr();
     nomes[meuId]=meuNome;
     fdb.collection("usuarios").doc(meuId).set({nome:meuNome,email:meuEmail,ultimoAcesso:new Date().toISOString()},{merge:true}).catch(()=>{});
     route();
     if(assinado)return;assinado=true;
     timer=setTimeout(()=>setSync("Ainda não foi possível acessar os dados. Verifique a conexão."),10000);
-  assinar("membros","m",v=>membros=v.filter(m=>m.nome));
-  assinar("encontros","e",v=>encontros=v.filter(e=>e.data));
+  assinar("membros","m",v=>full.membros=v.filter(m=>m.nome));
+  assinar("encontros","e",v=>full.encontros=v.filter(e=>e.data));
   db.collection("config").onSnapshot(s=>{const c={};s.docs.forEach(x=>c[x.id]=x.data());cfg=c;agendar()},e=>console.error(e));
-  assinar("planos","p",v=>planos=v.filter(p=>p.acao));
-  assinar("eventos","v",v=>eventos=v.filter(e=>e.nome));
-  assinar("cuidados","c",v=>cuidados=v.filter(c=>c.membroId).map(c=>({...c,status:c.status||"concluido",dataAcao:c.dataAcao||c.data||"",pontosFortes:c.pontosFortes??c.obs??""})));
+  assinar("planos","p",v=>full.planos=v.filter(p=>p.acao));
+  assinar("eventos","v",v=>full.eventos=v.filter(e=>e.nome));
+  assinar("cuidados","c",v=>full.cuidados=v.filter(c=>c.membroId).map(c=>({...c,status:c.status||"concluido",dataAcao:c.dataAcao||c.data||"",pontosFortes:c.pontosFortes??c.obs??""})));
   });
 }
 init();
