@@ -287,7 +287,7 @@ const tagsHtml=(name,sel)=>`<div class="tags" role="group">${ASSUNTOS.map(a=>`<l
 const COMO_CHEGOU=["Convite de amigo","Família","Redes sociais","Evento","Outro"];
 const DIAS_SEM_CONTATO=15;
 
-let db=null,user=null,downloads=null,meuId=null,podeEditar=true,meuEmail="",meuNome="",ehAdmin=false;
+let db=null,user=null,downloads=null,meuId=null,podeEditar=true,meuEmail="",meuNome="",ehAdmin=false,meuDep="",migrado=false;
 let membros=[],encontros=[],cuidados=[],eventos=[],planos=[],cfg={};
 const loaded={m:false,e:false,c:false};
 const nomes={};
@@ -304,6 +304,8 @@ function fmt(s){if(!s)return "—";const [y,m,d]=s.slice(0,10).split("-");return
 function idade(n){if(!n)return null;const h=dt(hoje()),b=dt(n);let a=h.getFullYear()-b.getFullYear();if(h.getMonth()<b.getMonth()||(h.getMonth()===b.getMonth()&&h.getDate()<b.getDate()))a--;return a}
 const DEPS=[{v:"Homens",n:"Homens",c:"#7B3FE4"},{v:"Mulheres",n:"Mulheres",c:"#5A4BD6"},{v:"Jovem",n:"Jovens",c:"#3B6FE0"},{v:"Adolescente",n:"Adolescentes",c:"#2193C4"},{v:"Criança",n:"Crianças",c:"#1FB89C"}];
 const DEP_VALS=DEPS.map(d=>d.v);
+const CAMPO_DEP={membros:"faixa",cuidados:"departamento",encontros:"departamento",eventos:"departamento",planos:"departamento"};
+function depDoMembro(id){const m=membros.find(x=>x.id===id);if(!m)return "";const f=faixa(m);return DEP_VALS.includes(f)?f:""}
 const depOpts=sel=>DEPS.map(d=>`<option value="${d.v}" ${sel===d.v?"selected":""}>${d.n}</option>`).join("");
 function faixa(m){if(DEP_VALS.includes(m.faixa))return m.faixa;const a=idade(m.nascimento);if(a==null)return "Sem idade";if(a<12)return "Criança";if(a>=12&&a<=17)return "Adolescente";if(a>=18&&a<=29)return "Jovem";return "Outra faixa"}
 const ehMenor=m=>{if(m.faixa==="Adolescente"||m.faixa==="Criança")return true;if(m.faixa==="Homens"||m.faixa==="Mulheres"||m.faixa==="Jovem")return false;const a=idade(m.nascimento);return a!=null&&a<18};
@@ -526,7 +528,7 @@ function dlgForm(id){
   d.innerHTML=`<form id="fp" method="dialog"><div class="dlg-h"><h2>${id?"Editar pessoa":"Cadastrar pessoa"}</h2><button type="button" class="btn ghost sm" data-close>Cancelar</button></div>
   <div class="dlg-b"><div class="form">
     <label class="full">Nome completo<input name="nome" required value="${esc(m.nome)}" autocomplete="off"></label>
-    <label>Departamento<select name="faixa" required><option value="">Escolha…</option>${depOpts(m.faixa||(id?faixa(m):""))}</select></label>
+    <label>Departamento<select name="faixa" required ${ehAdmin?"":"disabled"}><option value="">Escolha…</option>${depOpts(ehAdmin?(m.faixa||(id?faixa(m):"")):meuDep)}</select></label>
     <label>Nascimento<input type="date" name="nascimento" value="${esc(m.nascimento)}"></label>
     <label>WhatsApp<input name="whatsapp" inputmode="tel" value="${esc(m.whatsapp)}" placeholder="(11) 90000-0000"></label>
     <label>CPF<input name="cpf" inputmode="numeric" value="${esc(m.cpf)}"></label>
@@ -557,6 +559,7 @@ function dlgForm(id){
     if(!v.nome){f.nome.focus();return}
     if(!v.faixa){f.faixa.focus();return}
     if(id){
+      if(ehAdmin&&DEP_VALS.includes(v.faixa)&&v.faixa!==faixa(m)){const cs=cuidados.filter(c=>c.membroId===id);if(cs.length){const b=db.batch();cs.forEach(c=>b.update(db.collection("cuidados").doc(c.id),{departamento:v.faixa}));b.commit().catch(e=>console.error(e))}}
       const hist=(m.historico||[]).slice();
       if(v.grupo!==m.grupo)hist.push({de:m.grupo,para:v.grupo,data:new Date().toISOString(),motivo:"Alterado na edição",por:meuId||""});
       if(await gravar(()=>db.collection("membros").doc(id).update({...v,historico:hist}),"Alterações salvas"))dlgPessoa(id);
@@ -581,6 +584,7 @@ function vChamada(){
     ${podeEditar?`<section class="panel"><h3>Novo encontro</h3><div class="form">
       <label>Data<input type="date" id="chData" value="${hoje()}"></label>
       <label>Tipo<select id="chTipo">${TIPOS_ENCONTRO.map(t=>`<option>${t}</option>`).join("")}</select></label>
+      ${ehAdmin?`<label>Departamento<select id="chDep"><option value="">Todos (geral)</option>${depOpts("")}</select></label>`:""}
       <label>Nome (opcional)<input id="chTit" placeholder="Ex.: Célula do Centro"></label>
       <div style="align-self:end"><button class="btn pri" data-act="iniciar" style="width:100%">Iniciar chamada</button></div>
     </div></section>`:""}
@@ -590,14 +594,14 @@ function vChamada(){
   <div class="toolbar"><input type="search" id="chBusca" placeholder="Buscar nome" value="${esc(st.chBusca)}" aria-label="Buscar nome"></div>
   <div id="attList"></div>
   <section class="panel" style="margin-top:14px"><h3>Visitante novo</h3><p class="sub" style="margin:-6px 0 10px">Entra direto em Conectando e já fica marcado como presente.</p>
-    <div class="form"><label>Nome<input id="vNome"></label><label>WhatsApp<input id="vTel" inputmode="tel"></label><label>Departamento<select id="vFaixa">${depOpts("Jovem")}</select></label><div style="align-self:end"><button class="btn" data-act="visitante" style="width:100%">Adicionar visitante</button></div></div>
+    <div class="form"><label>Nome<input id="vNome"></label><label>WhatsApp<input id="vTel" inputmode="tel"></label><label>Departamento<select id="vFaixa" ${ehAdmin&&!(st.chamada&&st.chamada.departamento)?"":"disabled"}>${depOpts(ehAdmin?((st.chamada&&st.chamada.departamento)||"Jovem"):meuDep)}</select></label><div style="align-self:end"><button class="btn" data-act="visitante" style="width:100%">Adicionar visitante</button></div></div>
   </section>
   <div class="sticky-save"><span class="count" id="chCount"></span><button class="btn" data-act="cancelar-ch">Cancelar</button><button class="btn pri" data-act="salvar-ch">Salvar chamada</button></div>`;
 }
 function lChamada(){
   const ch=st.chamada,el=$("#attList");if(!ch||!el)return;
   const q=st.chBusca.trim().toLowerCase();
-  const arr=membros.filter(m=>!q||(m.nome||"").toLowerCase().includes(q)).sort((a,b)=>ORDEM.indexOf(a.grupo)-ORDEM.indexOf(b.grupo)||byNome(a,b));
+  const arr=membros.filter(m=>(!ch.departamento||faixa(m)===ch.departamento)&&(!q||(m.nome||"").toLowerCase().includes(q))).sort((a,b)=>ORDEM.indexOf(a.grupo)-ORDEM.indexOf(b.grupo)||byNome(a,b));
   el.innerHTML=arr.length?`<div class="att">${arr.map(m=>{const on=ch.presentes.has(m.id);return `<button data-pres="${m.id}" aria-pressed="${on}" class="c-${m.grupo}"><span class="box">${on?"✓":""}</span><span><span class="t">${esc(m.nome)}</span><span class="m"><span class="dot" style="width:8px;height:8px"></span> ${GRUPOS[m.grupo]?.curto||""}</span></span></button>`}).join("")}</div>`:`<div class="panel"><p class="empty">${membros.length?"Ninguém encontrado.":"Cadastre pessoas para fazer a chamada, ou adicione visitantes abaixo."}</p></div>`;
   $("#chCount").textContent=`${ch.presentes.size} ${ch.presentes.size===1?"presente":"presentes"}`;
 }
@@ -638,40 +642,20 @@ function itemCuidado(c,h){
 }
 
 /* ---------- funil por departamento ---------- */
-function vFunilAntigo(){
-  const cnt={};DEPS.forEach(d=>cnt[d.v]={p:0,c:0,v:0});
-  let tp=0,tc=0,vis=0,sem=0;
-  membros.forEach(m=>{const k=cnt[faixa(m)];
-    if(m.grupo==="conectando"){vis++;if(k)k.v++;return}
-    if(m.grupo==="participante")tp++;else if(m.grupo==="cuidado")tc++;else return;
-    if(k){if(m.grupo==="participante")k.p++;else k.c++}else sem++});
-  const n=DEPS.length;
-  const rows=DEPS.map((d,i)=>{const top=100-i*15,bot=i===n-1?0:top-15,ins=((top-bot)/2/top*100).toFixed(2),k=cnt[d.v],ult=i===n-1;
-    return `<div class="f-row" style="--fc:${d.c}"><div class="f-cell"><button class="f-seg${ult?" f-last":""}" data-dep="${d.v}" style="width:${top}%;clip-path:polygon(0 0,100% 0,${(100-ins).toFixed(2)}% 100%,${ins}% 100%)" aria-label="${d.n}: ${k.p+k.c} membros. Ver pessoas"><span>${d.n}</span><small>${k.p+k.c} ${k.p+k.c===1?"membro":"membros"}</small></button></div>
-    <div class="f-info"><span class="f-line" aria-hidden="true"></span><div class="f-box"><button data-dep="${d.v}" data-dep-grupo="participante"><b>${k.p}</b> Participantes</button><button data-dep="${d.v}" data-dep-grupo="cuidado"><b>${k.c}</b> Em cuidado</button>${k.v?`<button class="vis" data-dep="${d.v}" data-dep-grupo="conectando"><b>${k.v}</b> Visitantes</button>`:""}</div></div></div>`}).join("");
-  return `<div class="view-title"><div><h2>Funil por departamento</h2><p class="sub">Toque em um departamento para abrir a lista de pessoas</p></div></div>
-  <div class="funil">
-    <div class="f-top"><div class="f-num">${tp+tc}</div><div><b>Total de membros</b><div class="gdesc">${tp} Participantes + ${tc} Em cuidado</div></div></div>
-    <div class="f-rows">${rows}</div>
-    <div class="f-bottom"><div class="f-num" style="color:var(--conn)">${vis}</div><div><b>Visitantes</b><div class="gdesc">Conectando, em todos os departamentos</div></div><button class="btn sm" data-goto-grupo="conectando">Ver lista</button></div>
-    ${sem?`<p class="empty" style="text-align:center;margin-top:12px">${sem} ${sem===1?"membro está":"membros estão"} sem departamento definido. <a href="#pessoas" data-dep="__sem">Revisar</a></p>`:""}
-  </div>`;
-}
-
 /* ---------- funil v2 (com líderes) ---------- */
 function vFunil(){
   const z=()=>({lider:0,participante:0,cuidado:0,ausente:0,conectando:0});
   const cnt={};DEPS.forEach(d=>cnt[d.v]=z());const tot=z();let sem=0;
   membros.forEach(m=>{if(tot[m.grupo]==null)return;tot[m.grupo]++;const k=cnt[faixa(m)];if(k)k[m.grupo]++;else if(MEMBRO_G.includes(m.grupo))sem++});
   const lids=(cfg.departamentos&&cfg.departamentos.lideres)||{};
-  const n=DEPS.length;
-  const rows=DEPS.map((d,i)=>{const top=100-i*15,bot=i===n-1?0:top-15,ins=((top-bot)/2/top*100).toFixed(2),k=cnt[d.v],ult=i===n-1,mem=k.lider+k.participante+k.cuidado;
+  const DV=ehAdmin?DEPS:DEPS.filter(x=>x.v===meuDep);const n=DV.length;
+  const rows=DV.map((d,i)=>{const top=100-i*15,bot=i===n-1?0:top-15,ins=((top-bot)/2/top*100).toFixed(2),k=cnt[d.v],ult=i===n-1,mem=k.lider+k.participante+k.cuidado;
     const ls=(lids[d.v]||[]).filter(Boolean).slice(0,4);
     const cb=(g,label,cls,show)=>show?`<button class="${cls}" data-dep="${d.v}" data-dep-grupo="${g}"><b>${k[g]}</b> ${label}</button>`:"";
-    const lidHtml=ls.length?(podeEditar?`<button class="f-lidb" data-act="editar-lideres" data-dep-lid="${d.v}" aria-label="Editar líderes de ${d.n}"><span class="f-lt">Líderes</span>${ls.map(x=>`<span title="${esc(x)}">${esc(x)}</span>`).join("")}</button>`:`<span class="f-lt">Líderes</span>${ls.map(x=>`<span title="${esc(x)}">${esc(x)}</span>`).join("")}`):(podeEditar?`<button class="f-add" data-act="editar-lideres" data-dep-lid="${d.v}">+ Líderes</button>`:"");
+    const lidHtml=ls.length?(ehAdmin?`<button class="f-lidb" data-act="editar-lideres" data-dep-lid="${d.v}" aria-label="Editar líderes de ${d.n}"><span class="f-lt">Líderes</span>${ls.map(x=>`<span title="${esc(x)}">${esc(x)}</span>`).join("")}</button>`:`<span class="f-lt">Líderes</span>${ls.map(x=>`<span title="${esc(x)}">${esc(x)}</span>`).join("")}`):(ehAdmin?`<button class="f-add" data-act="editar-lideres" data-dep-lid="${d.v}">+ Líderes</button>`:"");
     return `<div class="f-row" style="--fc:${d.c}"><div class="f-lid">${lidHtml}</div><div class="f-cell"><button class="f-seg${ult?" f-last":""}" data-dep="${d.v}" style="width:${top}%;clip-path:polygon(0 0,100% 0,${(100-ins).toFixed(2)}% 100%,${ins}% 100%)" aria-label="${d.n}: ${mem} membros. Ver pessoas"><span>${d.n}</span><small>${mem} ${mem===1?"membro":"membros"}</small></button></div>
     <div class="f-info"><span class="f-line" aria-hidden="true"></span><div class="f-box">${cb("participante","Participantes","",true)}${cb("cuidado","Em cuidado","",true)}${cb("lider","Líderes","",k.lider>0)}${cb("ausente","Ausentes","aus",k.ausente>0)}${cb("conectando","Visitantes","vis",k.conectando>0)}</div></div></div>`}).join("");
-  return `<div class="view-title"><div><h2>Funil por departamento</h2><p class="sub">Toque em um departamento para abrir a lista de pessoas</p></div>${podeEditar?`<button class="btn" data-act="editar-lideres">Editar líderes</button>`:""}</div>
+  return `<div class="view-title"><div><h2>Funil por departamento</h2><p class="sub">Toque em um departamento para abrir a lista de pessoas</p></div>${ehAdmin?`<button class="btn" data-act="editar-lideres">Editar líderes</button>`:""}</div>
   <div class="funil">
     <div class="f-top"><div class="f-num">${tot.lider+tot.participante+tot.cuidado}</div><div><b>Total de membros</b><div class="gdesc">${tot.lider} Líderes + ${tot.participante} Participantes + ${tot.cuidado} Em cuidado</div></div></div>
     <div class="f-rows">${rows}</div>
@@ -720,7 +704,7 @@ function dlgPlano(id){
   const ro=podeEditar?"":"disabled";
   d.innerHTML=`<form id="fpl"><div class="dlg-h"><h2>${id?"Ação do plano":"Nova ação"}</h2><button type="button" class="btn ghost sm" data-close>Fechar</button></div>
   <div class="dlg-b"><div class="form">
-    <label>Departamento<select name="departamento" required ${ro}><option value="">Escolha…</option>${depOpts(p.departamento)}</select></label>
+    <label>Departamento<select name="departamento" required ${ro} ${ehAdmin?"":"disabled"}><option value="">Escolha…</option>${depOpts(ehAdmin?p.departamento:meuDep)}</select></label>
     <label>Situação<select name="status" ${ro}>${STATUS_P.map(([v,t])=>`<option value="${v}" ${p.status===v?"selected":""}>${t}</option>`).join("")}</select></label>
     <label class="full">O que fazer<input name="acao" required ${ro} value="${esc(p.acao)}" placeholder="Ex.: Visitar os adolescentes em cuidado"></label>
     <label class="full">Por quê <span class="hint">objetivo da ação</span><input name="porque" ${ro} value="${esc(p.porque)}"></label>
@@ -746,7 +730,7 @@ async function dlgLinkCadastro(){
   const q=(t,tipo)=>`<li><b>${t}</b>${tipo?` <span class="hint">${tipo}</span>`:""}</li>`;
   d.innerHTML=`<div class="dlg-h"><div><h2>Link de cadastro</h2><div class="sub">Para novos membros e visitantes preencherem</div></div><button class="btn ghost sm" data-close>Fechar</button></div>
   <div class="dlg-b">
-    <div><h4>Link do formulário</h4><div class="form"><label class="full">Link do Google Forms<input id="lkCad" type="url" placeholder="https://forms.gle/…" value="${esc(link)}" ${podeEditar?"":"readonly"}></label></div>${podeEditar?`<div style="display:flex;justify-content:flex-end;margin-top:8px"><button class="btn sm" data-act="salvar-link">Salvar link</button></div>`:""}</div>
+    <div><h4>Link do formulário</h4><div class="form"><label class="full">Link do Google Forms<input id="lkCad" type="url" placeholder="https://forms.gle/…" value="${esc(link)}" ${ehAdmin?"":"readonly"}></label></div>${ehAdmin?`<div style="display:flex;justify-content:flex-end;margin-top:8px"><button class="btn sm" data-act="salvar-link">Salvar link</button></div>`:""}</div>
     ${link?`<div><h4>Enviar</h4><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" data-copiar="${esc(link)}">Copiar link</button><button class="btn sm" data-copiar="${esc(msg)}">Copiar mensagem</button><a class="btn sm pri" style="text-decoration:none" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(msg)}">Enviar no WhatsApp</a></div></div>`:""}
     <div><h4>Como montar o formulário</h4><p class="sub" style="margin:0 0 6px">Crie as perguntas com estes títulos exatos, para o app reconhecer as respostas:</p>
       <ol style="margin:0;padding-left:20px;font-size:.92rem;display:grid;gap:2px">
@@ -795,7 +779,7 @@ async function lerPlanilha(file){
     if(norm(nome).startsWith("exemplo"))return;
     const probs=[];
     if(!nome)probs.push("nome vazio");
-    const fx=depDe(v.faixa);if(fx===null)probs.push(`departamento “${v.faixa}” inválido`);else if(!fx)probs.push("departamento vazio");
+    const fx=depDe(v.faixa);if(fx===null)probs.push(`departamento “${v.faixa}” inválido`);else if(!fx)probs.push("departamento vazio");if(fx&&!ehAdmin&&fx!==meuDep)probs.push("departamento diferente do seu");
     const gr=grupoDe(v.grupo);if(!gr)probs.push(v.grupo?`grupo “${v.grupo}” inválido`:"grupo vazio");
     const nasc=v.nascimento?dataISO(v.nascimento):"";if(v.nascimento&&!nasc)probs.push("data de nascimento inválida");
     let pv=v.primeiraVisita?dataISO(v.primeiraVisita):"";if(v.primeiraVisita&&!pv)probs.push("primeira visita inválida");if(!pv&&v.carimbo)pv=dataISO(v.carimbo);
@@ -861,6 +845,7 @@ function dlgEventoForm(id){
   const radio=(name,val,txt,on)=>`<label class="segr"><input type="radio" name="${name}" value="${val}" ${on?"checked":""}><span>${txt}</span></label>`;
   d.innerHTML=`<form id="fe"><div class="dlg-h"><h2>${id?"Editar evento":"Criar evento"}</h2><button type="button" class="btn ghost sm" data-close>Cancelar</button></div>
   <div class="dlg-b"><div class="form">
+    <label class="full">Departamento<select name="departamento" ${ehAdmin?"":"disabled"}>${ehAdmin?`<option value="">Todos (geral)</option>`:""}${depOpts(ehAdmin?(e.departamento||""):meuDep)}</select></label>
     <label class="full">Nome do evento<input name="nome" required value="${esc(e.nome)}"></label>
     <label>Data<input type="date" name="data" required value="${esc(e.data)}"></label>
     <label>Local<input name="local" value="${esc(e.local)}"></label>
@@ -885,7 +870,7 @@ function dlgEventoForm(id){
   const sync=()=>{const inv=f.cobranca.value==="investimento",pix=f.pagModo.value!=="link";$("#invBox").style.display=inv?"":"none";$("#pixBox").style.display=pix?"":"none";$("#linkBox").style.display=pix?"none":""};
   f.addEventListener("change",sync);sync();
   f.addEventListener("submit",async ev=>{ev.preventDefault();
-    const v={nome:f.nome.value.trim(),data:f.data.value,local:f.local.value.trim(),cobranca:f.cobranca.value,valor:parseValor(f.valor.value),pagModo:f.pagModo.value,pixTipo:f.pixTipo.value,pixChave:f.pixChave.value.trim(),pixNome:f.pixNome.value.trim(),pixCidade:f.pixCidade.value.trim(),linkPagamento:f.linkPagamento.value.trim(),linkInscricao:f.linkInscricao.value.trim()};
+    const v={departamento:ehAdmin?f.departamento.value:meuDep,nome:f.nome.value.trim(),data:f.data.value,local:f.local.value.trim(),cobranca:f.cobranca.value,valor:parseValor(f.valor.value),pagModo:f.pagModo.value,pixTipo:f.pixTipo.value,pixChave:f.pixChave.value.trim(),pixNome:f.pixNome.value.trim(),pixCidade:f.pixCidade.value.trim(),linkPagamento:f.linkPagamento.value.trim(),linkInscricao:f.linkInscricao.value.trim()};
     if(v.cobranca==="investimento"){
       if(!(v.valor>0)){toast("Informe o valor do investimento.");f.valor.focus();return}
       if(v.pagModo==="pix"&&(!v.pixChave||!v.pixNome)){toast("Informe a chave PIX e o nome do recebedor.");(v.pixChave?f.pixNome:f.pixChave).focus();return}
@@ -940,7 +925,7 @@ async function cadastrarInscritos(e,idxs){
   for(const ix of idxs){const i=ins[ix];if(!i||(i.membroId&&membroPorId(i.membroId)))continue;
     const ex=acharMembro(i);if(ex){ins[ix]={...i,membroId:ex.id};continue}
     const a=idade(i.nascimento),ref=db.collection("membros").doc(),agora=new Date().toISOString();
-    const doc={nome:i.nome,nascimento:i.nascimento||"",cpf:i.cpf||"",whatsapp:i.whatsapp||"",email:i.email||"",faixa:a==null?"":(a<12?"Criança":a<18?"Adolescente":a<=29?"Jovem":""),grupo:"conectando",primeiraVisita:e.data||hoje(),comoChegou:"Evento",criadoEm:agora,criadoPor:meuId||"",historico:[{de:null,para:"conectando",data:agora,motivo:"Inscrição no evento "+e.nome,por:meuId||""}]};
+    const doc={nome:i.nome,nascimento:i.nascimento||"",cpf:i.cpf||"",whatsapp:i.whatsapp||"",email:i.email||"",faixa:e.departamento||(a==null?"":(a<12?"Criança":a<18?"Adolescente":a<=29?"Jovem":"")),grupo:"conectando",primeiraVisita:e.data||hoje(),comoChegou:"Evento",criadoEm:agora,criadoPor:meuId||"",historico:[{de:null,para:"conectando",data:agora,motivo:"Inscrição no evento "+e.nome,por:meuId||""}]};
     if(!await gravar(()=>ref.set(doc)))break;ins[ix]={...i,membroId:ref.id};n++}
   await gravar(()=>db.collection("eventos").doc(e.id).update({inscritos:ins}),n?`${n} ${n===1?"pessoa cadastrada":"pessoas cadastradas"} em Conectando`:"Inscritos vinculados ao cadastro");
 }
@@ -953,14 +938,15 @@ async function dlgAdmin(){
   d.innerHTML=`<div class="dlg-h"><div><h2>Administração</h2><div class="sub">Acessos e backup</div></div><button class="btn ghost sm" data-close>Fechar</button></div>
   <div class="dlg-b">
     <div><h4>Quem pode acessar</h4><div id="acList"><p class="empty">Carregando…</p></div>
-      <form id="fac" class="form" style="margin-top:10px"><label>E-mail Google<input name="email" type="email" required placeholder="nome@gmail.com" autocomplete="off"></label><label>Nome<input name="nome" autocomplete="off"></label><label>Perfil<select name="papel"><option value="lider">Líder</option><option value="admin">Administrador</option></select></label><div style="align-self:end"><button class="btn pri" type="submit" style="width:100%">Liberar acesso</button></div></form>
-      <p class="hint" style="margin:8px 0 0">Líder: vê e edita os dados. Administrador: também libera acessos e faz backup.</p></div>
+      <form id="fac" class="form" style="margin-top:10px"><label>E-mail Google<input name="email" type="email" required placeholder="nome@gmail.com" autocomplete="off"></label><label>Nome<input name="nome" autocomplete="off"></label><label>Perfil<select name="papel"><option value="lider">Líder</option><option value="admin">Administrador</option></select></label><label>Departamento <span class="hint">para líderes</span><select name="departamento"><option value="">Escolha…</option>${depOpts("")}</select></label><div style="align-self:end"><button class="btn pri" type="submit" style="width:100%">Liberar acesso</button></div></form>
+      <p class="hint" style="margin:8px 0 0">Líder: vê e edita só o departamento dele. Administrador: vê tudo, inclusive visitantes sem departamento, libera acessos e faz backup.</p></div>
     <div><h4>Backup</h4><p class="sub" style="margin:0 0 8px">Baixe uma cópia completa dos dados toda semana e guarde no seu Google Drive.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-act="backup-json">Baixar backup (JSON)</button><button class="btn" data-act="backup-xlsx">Baixar planilha (Excel)</button></div></div>
     <div><h4>Restaurar backup</h4><p class="sub" style="margin:0 0 8px">Importa um arquivo de backup (.json). Registros com o mesmo ID são substituídos pela versão do arquivo.</p><label class="btn">Escolher arquivo de backup<input type="file" id="fRest" accept=".json,application/json" hidden></label><div id="restInfo" style="margin-top:8px"></div></div>
   </div>`;
   d.querySelector("#fac").addEventListener("submit",async ev=>{ev.preventDefault();const f=ev.target;const em=f.email.value.trim().toLowerCase();
     if(!/^[^@ ]+@[^@ ]+[.][^@ ]+$/.test(em)){toast("E-mail inválido.");return}
-    if(await gravar(()=>db.collection("acessos").doc(em).set({email:em,nome:f.nome.value.trim(),papel:f.papel.value,liberadoPor:meuEmail,liberadoEm:new Date().toISOString()}),"Acesso liberado")){f.reset();carregarAcessos()}});
+    if(f.papel.value!=="admin"&&!f.departamento.value){toast("Escolha o departamento do líder.");f.departamento.focus();return}
+    if(await gravar(()=>db.collection("acessos").doc(em).set({email:em,nome:f.nome.value.trim(),papel:f.papel.value,departamento:f.papel.value==="admin"?"":f.departamento.value,liberadoPor:meuEmail,liberadoEm:new Date().toISOString()}),"Acesso liberado")){f.reset();carregarAcessos()}});
   d.querySelector("#fRest").addEventListener("change",ev=>restaurar(ev.target.files[0]));
   if(!d.open)d.showModal();
   carregarAcessos();
@@ -968,7 +954,7 @@ async function dlgAdmin(){
 async function carregarAcessos(){
   const el=$("#acList");if(!el)return;
   try{const x=await db.collection("acessos").get();const ac=x.docs.map(y=>({id:y.id,...y.data()})).filter(a=>a.id!==DONO).sort((a,b)=>(a.nome||a.id).localeCompare(b.nome||b.id,"pt-BR"));
-    el.innerHTML=`<ul class="list"><li><div class="grow"><div class="t">${esc(DONO)}</div><div class="m">Dono do app · Administrador</div></div></li>${ac.map(a=>`<li><div class="grow"><div class="t">${esc(a.nome||a.id)}</div><div class="m">${esc(a.id)} · ${a.papel==="admin"?"Administrador":"Líder"}</div></div><button class="btn sm ghost danger" data-rm-acesso="${esc(a.id)}">Remover</button></li>`).join("")}</ul>${ac.length?"":`<p class="empty">Nenhum líder liberado ainda.</p>`}`}
+    el.innerHTML=`<ul class="list"><li><div class="grow"><div class="t">${esc(DONO)}</div><div class="m">Dono do app · Administrador</div></div></li>${ac.map(a=>`<li><div class="grow"><div class="t">${esc(a.nome||a.id)}</div><div class="m">${esc(a.id)} · ${a.papel==="admin"?"Administrador":"Líder · "+esc(depInfo(a.departamento).n)}</div></div><button class="btn sm ghost danger" data-rm-acesso="${esc(a.id)}">Remover</button></li>`).join("")}</ul>${ac.length?"":`<p class="empty">Nenhum líder liberado ainda.</p>`}`}
   catch(e){console.error(e);el.innerHTML=`<p class="empty">Não foi possível carregar os acessos.</p>`}
 }
 async function lerTudo(){const out={};for(const c of COLS){const x=await db.collection(c).get();out[c]={};x.docs.forEach(y=>out[c][y.id]=y.data())}return out}
@@ -1000,6 +986,14 @@ async function restaurar(file){
   try{for(let i=0;i<itens.length;i+=400){const b=db.batch();itens.slice(i,i+400).forEach(([c,id,d])=>b.set(db.collection(c).doc(id),d));await b.commit();box.innerHTML=`<p class="empty">Restaurando… ${Math.min(i+400,itens.length)} de ${itens.length}</p>`}
     box.innerHTML=`<p class="empty">Backup restaurado: ${itens.length} registros.</p>`;toast("Backup restaurado")}
   catch(e){console.error(e);box.innerHTML=`<p class="empty">Erro ao restaurar (${esc(e.code||e.message||"")}).</p>`}
+}
+
+async function migrarDeps(){
+  try{const ops=[];
+    membros.forEach(m=>{if(!DEP_VALS.includes(m.faixa)){const f=faixa(m);if(DEP_VALS.includes(f))ops.push([db.collection("membros").doc(m.id),{faixa:f}])}});
+    cuidados.forEach(c=>{const d=depDoMembro(c.membroId);if(d&&c.departamento!==d)ops.push([db.collection("cuidados").doc(c.id),{departamento:d}])});
+    for(let i=0;i<ops.length;i+=400){const b=db.batch();ops.slice(i,i+400).forEach(([r,v])=>b.update(r,v));await b.commit()}
+  }catch(e){console.error(e)}
 }
 
 /* ---------- exportar ---------- */
@@ -1048,7 +1042,7 @@ document.addEventListener("click",async ev=>{
   if(ds.act==="add-inscrito"){$("#insForm").innerHTML=`<form id="fi" class="form" style="padding:12px;background:var(--surface2);border-radius:12px;margin:8px 0"><label class="full">Nome completo<input name="nome" required></label><label>Data de nascimento<input type="date" name="nascimento"></label><label>CPF<input name="cpf" inputmode="numeric"></label><label>Telefone (WhatsApp)<input name="whatsapp" inputmode="tel"></label><label>E-mail<input name="email" type="email"></label><div class="full" style="display:flex;gap:8px;justify-content:flex-end"><button type="button" class="btn" data-act="fechar-ins">Cancelar</button><button class="btn pri" type="submit">Adicionar inscrito</button></div></form>`;setTimeout(()=>$("#fi").nome.focus(),30);return}
   if(ds.act==="fechar-ins"){$("#insForm").innerHTML="";return}
   if(ds.excluirEvento){const e=evAtual();if(e&&await confirmar(`Excluir o evento ${e.nome} e a lista de inscritos?`,"Excluir")){if(await gravar(()=>db.collection("eventos").doc(e.id).delete(),"Evento excluído"))$("#dlg").close()}return}
-  if(ds.chamadaEvento){const e=evAtual();if(!e)return;$("#dlg").close();st.chamada={id:null,data:e.data,tipo:"Evento",titulo:e.nome,presentes:new Set()};st.chBusca="";render();return}
+  if(ds.chamadaEvento){const e=evAtual();if(!e)return;$("#dlg").close();st.chamada={id:null,data:e.data,tipo:"Evento",titulo:e.nome,departamento:e.departamento||(ehAdmin?"":meuDep),presentes:new Set()};st.chBusca="";render();return}
   if(ds.act==="novo"){dlgForm(null);return}
   if(ds.act==="exportar"){exportar();return}
   if(ds.gotoGrupo){st.grupo=ds.gotoGrupo;st.faixa=ds.gotoFaixa||"";location.hash="#pessoas";if(view==="pessoas")render();return}
@@ -1064,12 +1058,12 @@ document.addEventListener("click",async ev=>{
   if(ds.concluir){st.concluindo=ds.concluir;lCuidado();setTimeout(()=>document.querySelector("#fconc textarea")?.focus(),30);return}
   if(ds.cancelarConc!==undefined){st.concluindo="";lCuidado();return}
   if(ds.reabrir){if(await confirmar("Reabrir esta ação como pendente?","Reabrir",false))await gravar(()=>db.collection("cuidados").doc(ds.reabrir).update({status:"pendente"}),"Ação reaberta");return}
-  if(ds.act==="iniciar"){st.chamada={id:null,data:$("#chData").value||hoje(),tipo:$("#chTipo").value,titulo:$("#chTit").value.trim(),presentes:new Set()};st.chBusca="";render();return}
-  if(ds.abrirEnc){const e=encontros.find(x=>x.id===ds.abrirEnc);if(e){st.chamada={id:e.id,data:e.data,tipo:e.tipo,titulo:e.titulo||"",presentes:new Set(e.presentes||[])};st.chBusca="";render()}return}
+  if(ds.act==="iniciar"){st.chamada={id:null,data:$("#chData").value||hoje(),tipo:$("#chTipo").value,titulo:$("#chTit").value.trim(),departamento:ehAdmin?($("#chDep")?.value||""):meuDep,presentes:new Set()};st.chBusca="";render();return}
+  if(ds.abrirEnc){const e=encontros.find(x=>x.id===ds.abrirEnc);if(e){st.chamada={id:e.id,data:e.data,tipo:e.tipo,titulo:e.titulo||"",departamento:e.departamento||"",presentes:new Set(e.presentes||[])};st.chBusca="";render()}return}
   if(ds.pres){const s=st.chamada.presentes;s.has(ds.pres)?s.delete(ds.pres):s.add(ds.pres);t.setAttribute("aria-pressed",s.has(ds.pres));t.querySelector(".box").textContent=s.has(ds.pres)?"✓":"";$("#chCount").textContent=`${s.size} ${s.size===1?"presente":"presentes"}`;return}
   if(ds.act==="cancelar-ch"){if(st.chamada.presentes.size&&!st.chamada.id&&!(await confirmar("Descartar esta chamada?","Descartar")))return;st.chamada=null;render();return}
   if(ds.act==="salvar-ch"){const ch=st.chamada;const ref=ch.id?db.collection("encontros").doc(ch.id):db.collection("encontros").doc();
-    const body={data:ch.data,tipo:ch.tipo,titulo:ch.titulo,presentes:[...ch.presentes],atualizadoEm:new Date().toISOString(),atualizadoPor:meuId||""};
+    const body={data:ch.data,tipo:ch.tipo,titulo:ch.titulo,departamento:ch.departamento||"",presentes:[...ch.presentes],atualizadoEm:new Date().toISOString(),atualizadoPor:meuId||""};
     if(await gravar(()=>ref.set(body),"Chamada salva")){st.chamada=null;render()}return}
   if(ds.act==="excluir-enc"){if(await confirmar("Excluir este encontro e as presenças marcadas?","Excluir")){if(await gravar(()=>db.collection("encontros").doc(st.chamada.id).delete(),"Encontro excluído")){st.chamada=null;render()}}return}
   if(ds.act==="visitante"){const n=$("#vNome").value.trim();if(!n){$("#vNome").focus();return}const ch=st.chamada;const ref=db.collection("membros").doc();
@@ -1096,7 +1090,7 @@ document.addEventListener("submit",async ev=>{
     if(await gravar(()=>db.collection("cuidados").doc(f.dataset.id).update({status:"concluido",dataAcao:f.dataAcao.value||hoje(),pontosFortes:pontos,assuntosAbordados:ab,concluidoPor:meuId||"",concluidoEm:new Date().toISOString()}),"Ação concluída")){st.concluindo="";lCuidado()}return}
   if(ev.target.id!=="fc")return;
   ev.preventDefault();const f=ev.target;
-  const body={membroId:f.membroId.value,tipo:f.tipo.value,prazo:f.prazo.value,assuntos:[...f.querySelectorAll("input[name=assunto]:checked")].map(i=>i.value),status:"pendente",autorId:meuId||"",criadoEm:new Date().toISOString()};
+  const body={membroId:f.membroId.value,departamento:ehAdmin?depDoMembro(f.membroId.value):meuDep,tipo:f.tipo.value,prazo:f.prazo.value,assuntos:[...f.querySelectorAll("input[name=assunto]:checked")].map(i=>i.value),status:"pendente",autorId:meuId||"",criadoEm:new Date().toISOString()};
   if(!body.membroId){f.membroId.focus();return}
   if(!body.prazo){f.prazo.focus();return}
   if(await gravar(()=>db.collection("cuidados").doc().set(body),"Ação salva como pendente")){st.ctMembro="";f.membroId.value="";f.querySelectorAll("input[name=assunto]").forEach(i=>i.checked=false);st.ctFiltro="pendentes";document.querySelectorAll("[data-ctf]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.ctf==="pendentes"));lCuidado()}
@@ -1122,9 +1116,10 @@ async function resolverNomes(){
   agendar();
 }
 function assinar(col,key,set){
-  db.collection(col).onSnapshot(s=>{
+  (ehAdmin||!CAMPO_DEP[col]?db.collection(col):db.collection(col).where(CAMPO_DEP[col],"==",meuDep)).onSnapshot(s=>{
     set(s.docs.map(d=>({id:d.id,...d.data()})));
     if(!s.metadata.fromCache)loaded[key]=true;
+    if(ehAdmin&&!migrado&&loaded.m&&loaded.c){migrado=true;setTimeout(migrarDeps,500)}
     if(loaded.m&&loaded.e&&loaded.c){clearTimeout(timer);setSync("Dados sincronizados com a equipe")}
     if(col==="cuidados")resolverNomes();
     agendar();
@@ -1162,11 +1157,12 @@ async function init(){
     meuEmail=(u.email||"").toLowerCase();meuId=u.uid;meuNome=u.displayName||meuEmail;
     const fdb=firebase.firestore();let papel=null;
     if(meuEmail===DONO)papel="admin";
-    else{try{const x=await fdb.collection("acessos").doc(meuEmail).get();if(x.exists)papel=x.data().papel||"lider"}catch(e){console.error(e)}}
+    else{try{const x=await fdb.collection("acessos").doc(meuEmail).get();if(x.exists){papel=x.data().papel||"lider";meuDep=x.data().departamento||""}}catch(e){console.error(e)}}
     if(!papel){telaLogin(`O e-mail ${meuEmail} ainda não tem acesso. Peça ao administrador para liberar.`,true,true);return}
-    ehAdmin=papel==="admin";podeEditar=true;db=fdb;
+    if(papel!=="admin"&&!DEP_VALS.includes(meuDep)){telaLogin(`O acesso de ${meuEmail} ainda não tem departamento definido. Peça ao administrador para ajustar.`,true,true);return}
+    ehAdmin=papel==="admin";if(ehAdmin)meuDep="";podeEditar=true;db=fdb;
     document.body.classList.remove("sem-acesso");
-    $("#usr").innerHTML=`${esc(meuEmail)} · ${ehAdmin?`<button class="lnk" data-act="admin">Administração</button> · `:""}<button class="lnk" data-act="sair">Sair</button>`;
+    $("#usr").innerHTML=`${esc(meuEmail)}${!ehAdmin&&meuDep?" · Líder de "+esc(depInfo(meuDep).n):""} · ${ehAdmin?`<button class="lnk" data-act="admin">Administração</button> · `:""}<button class="lnk" data-act="sair">Sair</button>`;
     nomes[meuId]=meuNome;
     fdb.collection("usuarios").doc(meuId).set({nome:meuNome,email:meuEmail,ultimoAcesso:new Date().toISOString()},{merge:true}).catch(()=>{});
     route();
