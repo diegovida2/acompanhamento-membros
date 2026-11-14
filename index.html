@@ -414,7 +414,7 @@ function vPainel(){
   membros.forEach(m=>{(m.historico||[]).forEach(x=>{if(!x.data||x.data.slice(0,7)!==mes)return;if(!x.de)novos++;else if(x.de==="conectando"&&x.para==="participante")c2p++;else if(x.de==="cuidado"&&x.para==="participante")cu2p++;else if(x.de==="participante"&&x.para==="cuidado")p2c++})});
   const ult=encontros.slice().sort((a,b)=>b.data.localeCompare(a.data)).slice(0,8);
   const media=ult.length?Math.round(ult.reduce((s,e)=>s+(e.presentes||[]).length,0)/ult.length):0;
-  const membrosTot=cont.participante+cont.cuidado,memA=split.participante.a+split.cuidado.a,memJ=split.participante.j+split.cuidado.j;
+  const membrosTot=cont.lider+cont.participante+cont.cuidado;
   const pendC=cuidados.filter(c=>c.status!=="concluido"),atrasC=pendC.filter(c=>c.prazo&&c.prazo<h);
   const concMes=cuidados.filter(c=>c.status==="concluido"&&(c.dataAcao||"").slice(0,7)===mes);
   const noPrazo=concMes.filter(c=>!c.prazo||c.dataAcao<=c.prazo).length;
