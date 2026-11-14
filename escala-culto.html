@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Escala de Culto</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<style>
+:root{
+  --bg:#EEF0F5;--surface:#FFFFFF;--surface2:#F6F7FA;--ink:#1A1E31;--muted:#5B6176;--line:#DADDE7;
+  --brand:#2A3889;--brand-ink:#FFFFFF;
+  --part:#1E8656;--cuid:#B9740F;--conn:#2874C6;--danger:#B43A3A;
+  --radius:14px;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#11131B;--surface:#1A1D28;--surface2:#222634;--ink:#E8EAF2;--muted:#9AA0B5;--line:#2E3243;
+    --brand:#8E9DF2;--brand-ink:#11131B;--part:#4CC48D;--cuid:#E8A747;--conn:#69AEF2;--danger:#EE7B7B;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#11131B;--surface:#1A1D28;--surface2:#222634;--ink:#E8EAF2;--muted:#9AA0B5;--line:#2E3243;
+  --brand:#8E9DF2;--brand-ink:#11131B;--part:#4CC48D;--cuid:#E8A747;--conn:#69AEF2;--danger:#EE7B7B;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Figtree,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding-bottom:84px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+h1,h2,h3{font-family:"Bricolage Grotesque",Figtree,system-ui,sans-serif;margin:0;line-height:1.15;letter-spacing:-.01em}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--brand)}
+:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
+
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
+.top-in{max-width:1080px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:16px;justify-content:space-between}
+.top h1{font-size:1.15rem}
+#sync{margin:0;font-size:.8rem;color:var(--muted)}
+.tabs{display:flex;gap:4px}
+.tabs a{text-decoration:none;color:var(--muted);padding:8px 14px;border-radius:999px;font-weight:600;font-size:.95rem}
+.tabs a[aria-current="page"]{background:var(--brand);color:var(--brand-ink)}
+@media (max-width:720px){
+  .tabs{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);justify-content:space-around;padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px));z-index:6}
+  .tabs a{flex:1;text-align:center;padding:10px 2px;font-size:.76rem}
+}
+main{max-width:1080px;margin:0 auto;padding:20px 16px}
+.view-title{display:flex;align-items:end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.view-title h2{font-size:1.6rem}
+.sub{color:var(--muted);margin:2px 0 0;font-size:.95rem}
+
+.btn{border:1px solid var(--line);background:var(--surface);padding:9px 14px;border-radius:10px;font-weight:600;cursor:pointer}
+.btn.pri{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+.btn.sm{padding:6px 10px;font-size:.88rem}
+.btn.ghost{background:transparent}
+.btn.danger{color:var(--danger)}
+.btn:disabled{opacity:.5;cursor:default}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px}
+.panel h3{font-size:1.05rem;margin-bottom:10px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin-top:14px}
+
+/* faixa dos 3 grupos */
+.groups{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+.bar{display:flex;height:14px;background:var(--surface2)}
+.bar span{display:block;height:100%;transition:width .4s}
+.gcols{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.gcol{padding:16px;border-left:1px solid var(--line);cursor:pointer;background:none;border-top:0;border-right:0;border-bottom:0;text-align:left}
+.gcol:first-child{border-left:0}
+.gcol:hover{background:var(--surface2)}
+.gnum{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;font-size:2.6rem;line-height:1}
+.gname{font-weight:600;margin-top:6px;display:flex;align-items:center;gap:6px}
+.gdesc{color:var(--muted);font-size:.86rem}
+.gsplit{font-size:.82rem;color:var(--muted);margin-top:6px}
+@media (max-width:560px){.gcols{grid-template-columns:1fr}.gcol{border-left:0;border-top:1px solid var(--line);display:grid;grid-template-columns:auto 1fr;column-gap:14px;align-items:center}.gcol:first-child{border-top:0}.gnum{grid-row:span 3;font-size:2.2rem;min-width:56px}.gname{margin:0}}
+
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block;flex:none}
+.c-participante{--g:var(--part)} .c-cuidado{--g:var(--cuid)} .c-conectando{--g:var(--conn)} .c-atraso{--g:var(--danger)}
+:root{--lid:#6A3FCF;--aus:#7A8094}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--lid:#B39CF6;--aus:#A3A9BB}}
+:root[data-theme="dark"]{--lid:#B39CF6;--aus:#A3A9BB}
+.c-lider{--g:var(--lid)} .c-ausente{--g:var(--aus)}
+.pl-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.pl-card{display:grid;gap:2px;text-align:left;padding:12px 14px;border:1px solid var(--line);border-left:5px solid var(--fc);border-radius:12px;background:var(--surface);cursor:pointer;font-size:.88rem;color:var(--muted)}
+.pl-card b{color:var(--ink);font-family:"Bricolage Grotesque",sans-serif;font-size:1.1rem}
+.pl-card .pl-n{font-weight:700;color:var(--ink);font-size:.95rem}
+.pl-card.on{background:color-mix(in srgb,var(--fc) 12%,var(--surface));border-color:var(--fc)}
+.pl-at b{color:var(--danger)}
+.lbl{font-size:.88rem;font-weight:600;color:var(--muted);margin-bottom:6px}
+.tags{display:flex;flex-wrap:wrap;gap:6px}
+.tags .tag{display:inline-flex;position:relative;cursor:pointer}
+.tag input{position:absolute;opacity:0;width:1px;height:1px}
+.tag span{padding:6px 12px;border:1px solid var(--line);border-radius:999px;font-weight:600;font-size:.88rem;color:var(--ink);background:var(--surface)}
+.tag input:checked+span{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+.tag input:focus-visible+span{outline:3px solid var(--brand);outline-offset:2px}
+.hero{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-bottom:14px}
+.hero .big{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;font-size:3.2rem;line-height:1;color:var(--brand)}
+.hero .txt{flex:1;min-width:160px}
+.hero .split{display:flex;gap:10px;flex-wrap:wrap}
+.tbl{width:100%;border-collapse:collapse;font-size:.92rem}
+.tbl th,.tbl td{padding:8px 10px;border-top:1px solid var(--line);text-align:right;white-space:nowrap}
+.tbl th:nth-child(-n+2),.tbl td:nth-child(-n+2){text-align:left}
+.tbl thead th{border-top:0;color:var(--muted);font-weight:600;font-size:.82rem}
+.scroll{overflow-x:auto}
+.hbar{display:grid;grid-template-columns:110px 1fr 32px;gap:8px;align-items:center;font-size:.88rem;margin:4px 0}
+.hbar i{display:block;height:10px;border-radius:5px;background:var(--brand)}
+.hbar b{text-align:right}
+.full-span{margin-top:14px}
+.funil{max-width:860px;margin:0 auto}
+.f-top,.f-bottom{display:flex;align-items:center;gap:16px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px 18px;flex-wrap:wrap}
+.f-top{margin-bottom:18px}.f-bottom{margin-top:18px}
+.f-num{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;font-size:2.6rem;line-height:1;color:var(--brand);min-width:56px}
+.f-bottom .btn{margin-left:auto}
+.f-rows{display:grid;gap:6px}
+.f-row{display:grid;grid-template-columns:minmax(90px,.55fr) minmax(0,1.3fr) minmax(0,1fr);align-items:center}
+.f-lid{display:flex;flex-direction:column;align-items:flex-end;text-align:right;font-size:.8rem;line-height:1.3;padding-right:10px;gap:1px;min-width:0}
+.f-lid span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.f-lid .f-lt{font-size:.66rem;text-transform:uppercase;letter-spacing:.06em;color:var(--fc);font-weight:700}
+.f-add{border:1px dashed var(--line);background:none;border-radius:8px;padding:4px 8px;font-size:.75rem;color:var(--muted);cursor:pointer}
+.f-lidb{all:unset;display:flex;flex-direction:column;align-items:flex-end;gap:1px;max-width:100%;cursor:pointer;border-radius:8px;padding:2px 4px}
+.f-lidb:hover,.f-lidb:focus-visible{background:var(--surface2);outline:2px solid var(--fc)}
+.f-box .aus b{color:var(--aus)}
+.f-cell{display:flex;justify-content:center}
+.f-seg{height:74px;border:0;padding:0 4px;cursor:pointer;color:#fff;background:linear-gradient(180deg,color-mix(in srgb,var(--fc) 70%,#fff) 0%,var(--fc) 55%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-family:"Bricolage Grotesque",sans-serif;letter-spacing:.08em;text-transform:uppercase;font-weight:700;font-size:1.05rem;transition:filter .15s}
+.f-seg.f-last{height:104px;padding-bottom:40px}
+.f-seg small{font-family:Figtree,sans-serif;font-size:.78rem;letter-spacing:0;text-transform:none;font-weight:600;opacity:.92}
+.f-seg:hover,.f-seg:focus-visible{filter:brightness(1.15);outline:none}
+.f-info{display:flex;align-items:center;min-width:0}
+.f-line{flex:0 0 32px;border-top:2px dotted var(--fc);position:relative;margin-left:-6px}
+.f-line::after{content:"";position:absolute;right:-4px;top:-5px;width:8px;height:8px;border-radius:50%;background:var(--fc)}
+.f-box{display:flex;flex-wrap:wrap;gap:6px;padding-left:10px;min-width:0}
+.f-box button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 11px;font-size:.85rem;cursor:pointer;color:var(--muted);white-space:nowrap}
+.f-box button b{color:var(--ink);font-family:"Bricolage Grotesque",sans-serif;font-size:1rem;margin-right:2px}
+.f-box button:hover{border-color:var(--fc)}
+.f-box .vis b{color:var(--conn)}
+@media (max-width:600px){.f-row{grid-template-columns:minmax(62px,.6fr) minmax(0,1fr) minmax(0,1fr)}.f-lid{font-size:.66rem;padding-right:4px}.f-seg{font-size:.72rem;letter-spacing:.03em;height:66px}.f-seg small{font-size:.7rem}.f-seg.f-last{height:96px}.f-box{flex-direction:column;align-items:flex-start}.f-box button{padding:3px 9px;font-size:.78rem}.f-line{flex-basis:16px}}
+.seg .segr{position:relative;display:inline-flex;cursor:pointer}
+.segr input{position:absolute;opacity:0;width:1px;height:1px}
+.segr span{padding:8px 14px;font-weight:600;font-size:.9rem;color:var(--muted)}
+.segr input:checked+span{background:var(--surface2);color:var(--ink)}
+.segr input:focus-visible+span{outline:3px solid var(--brand);outline-offset:-3px}
+.pix{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
+#qr{background:#fff;padding:8px;border-radius:10px;line-height:0}
+#qr img,#qr canvas{display:block}
+.cc{display:block;font-size:.75rem;word-break:break-all;background:var(--surface2);padding:8px;border-radius:8px;margin:4px 0 8px;max-height:84px;overflow:auto}
+label.btn{display:inline-flex;align-items:center}
+.deps{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-bottom:14px}
+.dep-h{display:flex;align-items:center;gap:16px;margin-bottom:12px}
+.dep .big{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;font-size:3.2rem;line-height:1;color:var(--brand);min-width:56px}
+.dep-g{display:grid;gap:6px}
+.dep-i{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface2);cursor:pointer;text-align:left}
+.dep-i:hover{border-color:var(--g)}
+.dep-i b{font-family:"Bricolage Grotesque",sans-serif;font-size:1.2rem;color:var(--g)}
+.alerta b{color:var(--danger)}
+#dlg2{width:min(420px,calc(100% - 24px))}
+.btn.danger-pri{background:var(--danger);border-color:var(--danger);color:#fff}
+.dot{background:var(--g)}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:999px;font-size:.8rem;font-weight:600;color:var(--g);background:color-mix(in srgb,var(--g) 14%,transparent);white-space:nowrap}
+
+.list{list-style:none;margin:0;padding:0}
+.list li{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.list li:first-child{border-top:0}
+.list .grow{flex:1;min-width:0}
+.list .t{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.list .m{font-size:.85rem;color:var(--muted)}
+.empty{color:var(--muted);font-size:.92rem;margin:4px 0}
+.stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px}
+.stat{background:var(--surface2);border-radius:10px;padding:10px 12px}
+.stat b{display:block;font-family:"Bricolage Grotesque",sans-serif;font-size:1.5rem}
+.stat span{font-size:.82rem;color:var(--muted)}
+
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+.toolbar input[type=search]{flex:1 1 220px}
+input,select,textarea{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:9px 11px;width:100%}
+textarea{min-height:72px;resize:vertical}
+.toolbar select{width:auto}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface)}
+.seg button{border:0;background:none;padding:8px 12px;cursor:pointer;font-weight:600;font-size:.9rem;color:var(--muted);display:flex;gap:6px;align-items:center}
+.seg button[aria-pressed="true"]{background:var(--surface2);color:var(--ink)}
+
+.rows{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+.row{display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding:12px 16px;border-top:1px solid var(--line);cursor:pointer;width:100%;text-align:left;background:none;border-left:0;border-right:0;border-bottom:0}
+.row:first-child{border-top:0}
+.row:hover{background:var(--surface2)}
+.row .t{font-weight:600}
+.row .m{font-size:.85rem;color:var(--muted);grid-column:1}
+.row .chip{grid-row:1/3;grid-column:2;align-self:center}
+
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.form label{display:grid;gap:4px;font-size:.88rem;font-weight:600;color:var(--muted)}
+.form .full{grid-column:1/-1}
+.check{display:flex!important;gap:8px;align-items:flex-start;font-weight:500!important;color:var(--ink)!important}
+.check input{width:auto;margin-top:4px}
+.hint{font-weight:400;font-size:.8rem;color:var(--muted)}
+
+/* chamada */
+.att{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+.att button{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);cursor:pointer;text-align:left}
+.att button[aria-pressed="true"]{border-color:var(--part);background:color-mix(in srgb,var(--part) 12%,var(--surface))}
+.box{width:22px;height:22px;border-radius:7px;border:2px solid var(--line);flex:none;display:grid;place-items:center;font-size:14px;color:#fff}
+.att button[aria-pressed="true"] .box{background:var(--part);border-color:var(--part)}
+.att .t{font-weight:600;display:block;line-height:1.2}
+.att .m{font-size:.8rem;color:var(--muted)}
+.sticky-save{position:sticky;bottom:76px;margin-top:14px;display:flex;gap:8px;justify-content:flex-end;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:10px 12px}
+@media (min-width:721px){.sticky-save{bottom:12px}}
+.count{margin-right:auto;font-weight:600}
+
+dialog{border:0;border-radius:18px;padding:0;width:min(640px,calc(100% - 24px));max-height:calc(100% - 40px);background:var(--surface);color:var(--ink)}
+dialog::backdrop{background:rgb(10 12 20 / .45)}
+.dlg-h{display:flex;justify-content:space-between;align-items:start;gap:12px;padding:18px 20px 12px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--surface)}
+.dlg-h h2{font-size:1.35rem}
+.dlg-b{padding:16px 20px 20px;display:grid;gap:16px}
+.dlg-f{display:flex;gap:8px;justify-content:flex-end;padding:12px 20px;border-top:1px solid var(--line);position:sticky;bottom:0;background:var(--surface)}
+.info{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px 16px;font-size:.93rem}
+.info span{display:block;color:var(--muted);font-size:.8rem}
+.move{display:flex;gap:8px;flex-wrap:wrap}
+.move button{display:flex;align-items:center;gap:6px}
+.move button[aria-pressed="true"]{border-color:var(--g);background:color-mix(in srgb,var(--g) 14%,var(--surface))}
+.timeline{list-style:none;margin:0;padding:0;font-size:.9rem}
+.timeline li{padding:6px 0 6px 14px;border-left:2px solid var(--line);position:relative}
+.timeline li::before{content:"";position:absolute;left:-6px;top:12px;width:10px;height:10px;border-radius:50%;background:var(--g,var(--muted))}
+.timeline .m{color:var(--muted);font-size:.82rem}
+h4{margin:0 0 6px;font-size:.95rem}
+
+#toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .2s;z-index:20;max-width:90%}
+#toast.on{opacity:1}
+.notice{background:color-mix(in srgb,var(--cuid) 14%,var(--surface));border:1px solid color-mix(in srgb,var(--cuid) 40%,var(--line));padding:10px 14px;border-radius:12px;margin-bottom:14px;font-size:.92rem}
+#usr{margin:0;font-size:.78rem;color:var(--muted)}
+.lnk{background:none;border:0;padding:0;color:var(--brand);font:inherit;cursor:pointer;text-decoration:underline}
+.sem-acesso .tabs{display:none}
+.login{max-width:460px;margin:48px auto;text-align:center;display:grid;gap:14px;justify-items:center}
+.login h2{font-size:1.5rem}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+.c-ok{--g:var(--part)} .c-pend{--g:var(--cuid)}
+#dlg2{width:min(420px,calc(100% - 24px))}
+.btn.danger-pri{background:var(--danger);border-color:var(--danger);color:#fff}
+.mes-nav{display:flex;align-items:center;gap:10px}
+.mes-nav b{min-width:150px;text-align:center;text-transform:capitalize}
+.cultos{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+.culto{display:grid;gap:12px;align-content:start}
+.culto.passou{opacity:.65}
+.culto-h{display:flex;gap:12px;align-items:center}
+.culto-h h3{margin:0;font-size:1.05rem}
+.culto-h .m{font-size:.85rem;color:var(--muted)}
+.dia{display:grid;place-items:center;width:52px;height:52px;border-radius:12px;background:var(--brand);color:var(--brand-ink);flex:none;line-height:1}
+.dia b{font-family:"Bricolage Grotesque",sans-serif;font-size:1.35rem}
+.dia span{font-size:.7rem;text-transform:uppercase;letter-spacing:.05em}
+.funcs{margin:0;display:grid;gap:0}
+.funcs div{display:grid;grid-template-columns:minmax(130px,46%) 1fr;gap:8px;padding:6px 0;border-top:1px solid var(--line);font-size:.9rem}
+.funcs div:first-child{border-top:0}
+.funcs dt{color:var(--muted)}
+.funcs dd{margin:0;font-weight:600}
+.funcs .falta dd{color:var(--cuid);font-weight:500;font-style:italic}
+.culto-a{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.func-form{display:grid;gap:8px;margin-top:14px}
+.ff{display:grid;grid-template-columns:minmax(150px,200px) 1fr;gap:10px;align-items:center}
+.ff-n{font-weight:600;font-size:.9rem}
+.ff-i{display:flex;gap:8px;flex-wrap:wrap}
+.ff-i input{flex:1 1 160px}
+.ff-i input.hino{flex:0 0 96px}
+@media (max-width:560px){.ff{grid-template-columns:1fr;gap:4px}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-in">
+    <div>
+      <h1>Escala de Culto</h1>
+      <p id="sync">Carregando…</p>
+      <p id="usr"></p>
+    </div>
+    <nav class="tabs" aria-label="Seções">
+      <a href="#escala">Escala</a>
+      <a href="#pessoas">Pessoas</a>
+      <a href="#configurar">Configurar</a>
+    </nav>
+  </div>
+</header>
+<main id="app"><div class="panel"><p class="empty">Carregando…</p></div></main>
+<dialog id="dlg"></dialog>
+<dialog id="dlg2"></dialog>
+<div id="toast" role="status" aria-live="polite"></div>
+<script>
+(function(){
+"use strict";
+const FB_CONFIG={apiKey:"AIzaSyAjK2jhmt10joTSFT6f6t-V23k_fZp1XUI",authDomain:"acompanhamento-membros.firebaseapp.com",projectId:"acompanhamento-membros",storageBucket:"acompanhamento-membros.firebasestorage.app",messagingSenderId:"127677935199",appId:"1:127677935199:web:a519dcefa289b894dfb5ea"};
+const DONO="diegovida2@gmail.com";
+const FUNCOES=[
+ {k:"direcao",n:"Direção",ic:"🎤"},
+ {k:"recepcao",n:"Recepção",ic:"🤝",qtd:2},
+ {k:"pulpito",n:"Púlpito",ic:"📖"},
+ {k:"palavraOferta",n:"Palavra da oferta",ic:"💰"},
+ {k:"palavraOficial",n:"Palavra oficial",ic:"📜"},
+ {k:"hinoHarpa",n:"Hino da Harpa",ic:"🎵",hino:true},
+ {k:"hinoOferta",n:"Hino na oferta",ic:"🎶",hino:true},
+ {k:"intercessao",n:"Intercessão",ic:"🙏",qtd:2},
+ {k:"portao",n:"Portão de entrada",ic:"🚪"},
+ {k:"abrirFechar",n:"Abrir e fechar a igreja",ic:"🔑"}];
+const SLOTS=FUNCOES.reduce((s,f)=>s+(f.qtd||1),0);
+const DIAS=["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"];
+const CFG_PADRAO={domingo:{ativo:true,nome:"Culto de Domingo",horario:"18:00"},semanais:[{dia:3,nome:"Culto de Doutrina",horario:"19:30"}]};
+
+let db=null,meuEmail="",souAdmin=false,papel="";
+let cultos=[],cfg=CFG_PADRAO,membrosDir=[];
+const loaded={c:false};
+let view="escala";
+const st={mes:new Date().toISOString().slice(0,7),pBusca:""};
+
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pad=n=>String(n).padStart(2,"0");
+const iso=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const hoje=()=>iso(new Date());
+const dt=s=>new Date(s+"T00:00:00");
+function fmt(s){if(!s)return "—";const [y,m,d]=s.split("-");return d+"/"+m+"/"+y}
+const fmtC=s=>s?s.slice(8,10)+"/"+s.slice(5,7):"";
+const diaSem=s=>DIAS[dt(s).getDay()];
+const norm=s=>String(s||"").normalize("NFD").replace(/[^a-zA-Z0-9 ]/g,"").toLowerCase().replace(/ +/g," ").trim();
+const NL=String.fromCharCode(10);
+const MESES=["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+const mesLabel=m=>MESES[+m.slice(5,7)-1]+" de "+m.slice(0,4);
+function mesMais(m,n){const d=new Date(+m.slice(0,4),+m.slice(5,7)-1+n,1);return d.getFullYear()+"-"+pad(d.getMonth()+1)}
+function toast(t){const e=$("#toast");e.textContent=t;e.classList.add("on");clearTimeout(toast._t);toast._t=setTimeout(()=>e.classList.remove("on"),2800)}
+function setSync(t){$("#sync").textContent=t}
+function confirmar(msg,ok,perigo=true){return new Promise(res=>{const d=$("#dlg2");d.innerHTML=`<form method="dialog"><div class="dlg-b" style="padding-top:20px"><p style="margin:0;font-weight:600">${esc(msg)}</p></div><div class="dlg-f"><button value="nao" class="btn">Cancelar</button><button value="sim" class="btn ${perigo?"danger-pri":"pri"}">${esc(ok||"Confirmar")}</button></div></form>`;d.returnValue="";d.onclose=()=>{d.onclose=null;res(d.returnValue==="sim")};d.showModal()})}
+async function gravar(fn,ok){try{await fn();if(ok)toast(ok);return true}catch(e){console.error(e);toast(e&&e.code==="permission-denied"?"Sem permissão para esta ação.":"Não foi possível salvar. Tente de novo.");return false}}
+async function copiar(t){try{await navigator.clipboard.writeText(t);toast("Copiado. É só colar no WhatsApp")}catch(_){const ta=document.createElement("textarea");ta.value=t;ta.style.position="fixed";ta.style.opacity="0";($("#dlg").open?$("#dlg"):document.body).appendChild(ta);ta.select();try{document.execCommand("copy");toast("Copiado. É só colar no WhatsApp")}catch(e){toast("Não foi possível copiar.")}ta.remove()}}
+
+const escalados=(c,k)=>((c.escalados||{})[k]||[]).filter(Boolean);
+const preenchidos=c=>FUNCOES.reduce((s,f)=>s+Math.min(escalados(c,f.k).length,f.qtd||1),0);
+const cultosMes=()=>cultos.filter(c=>(c.data||"").slice(0,7)===st.mes).sort((a,b)=>a.data.localeCompare(b.data)||(a.horario||"").localeCompare(b.horario||""));
+function nomesConhecidos(){const s=new Set(membrosDir.map(m=>m.nome));cultos.forEach(c=>{FUNCOES.forEach(f=>escalados(c,f.k).forEach(n=>s.add(n)));if(c.responsavel)s.add(c.responsavel)});return [...s].sort((a,b)=>a.localeCompare(b,"pt-BR"))}
+function repetidos(c){const cont={};FUNCOES.forEach(f=>escalados(c,f.k).forEach(n=>{const k=norm(n);cont[k]=cont[k]||{n,fs:[]};cont[k].fs.push(f.n)}));return Object.values(cont).filter(x=>x.fs.length>1)}
+
+/* ---------- texto WhatsApp ---------- */
+function textoCulto(c){
+  const L=[`*Escala · ${c.nome||"Culto"}*`,`📅 ${diaSem(c.data)}, ${fmt(c.data)}${c.horario?" às "+c.horario.replace(":","h"):""}`];
+  if(c.responsavel)L.push(`Escala feita por: ${c.responsavel}`);
+  L.push("");
+  FUNCOES.forEach(f=>{const ns=escalados(c,f.k);const h=(c.hinos||{})[f.k];L.push(`${f.ic} *${f.n}:* ${ns.length?ns.join(" e "):"a definir"}${h?" (hino "+h+")":""}`)});
+  if(c.obs)L.push("",`📝 ${c.obs}`);
+  return L.join(NL);
+}
+function textoMes(){const cs=cultosMes();return [`*Escala de cultos · ${mesLabel(st.mes)}*`,...cs.map(c=>NL+textoCulto(c))].join(NL)}
+
+/* ---------- rotas ---------- */
+const VIEWS=["escala","pessoas","configurar"];
+function route(){const h=(location.hash||"").slice(1);view=VIEWS.includes(h)?h:"escala";document.querySelectorAll(".tabs a").forEach(a=>{if(a.getAttribute("href")==="#"+view)a.setAttribute("aria-current","page");else a.removeAttribute("aria-current")});render();window.scrollTo(0,0)}
+function render(){if(!db)return;const app=$("#app");if(view==="escala")app.innerHTML=vEscala();if(view==="pessoas"){app.innerHTML=vPessoas();lPessoas()}if(view==="configurar")app.innerHTML=vConfig()}
+const navMes=()=>`<div class="mes-nav"><button class="btn sm" data-mes="-1" aria-label="Mês anterior">‹</button><b>${mesLabel(st.mes)}</b><button class="btn sm" data-mes="1" aria-label="Próximo mês">›</button></div>`;
+
+/* ---------- escala ---------- */
+function vEscala(){
+  const cs=cultosMes();
+  const card=c=>{const p=preenchidos(c),rep=repetidos(c),passou=c.data<hoje();
+    return `<article class="panel culto ${passou?"passou":""}"><div class="culto-h"><div class="dia"><b>${c.data.slice(8,10)}</b><span>${diaSem(c.data).slice(0,3)}</span></div><div style="flex:1;min-width:0"><h3>${esc(c.nome||"Culto")}</h3><div class="m">${c.horario?esc(c.horario)+" · ":""}${c.tipo==="domingo"?"Domingo":"Semanal"}${c.responsavel?" · Escala: "+esc(c.responsavel):""}</div></div><span class="chip ${p===SLOTS?"c-ok":"c-pend"}"><span class="dot"></span>${p===SLOTS?"Completa":p+"/"+SLOTS}</span></div>
+    <dl class="funcs">${FUNCOES.map(f=>{const ns=escalados(c,f.k),h=(c.hinos||{})[f.k];return `<div class="${ns.length<(f.qtd||1)?"falta":""}"><dt>${f.ic} ${f.n}</dt><dd>${ns.length?ns.map(esc).join(" e "):"a definir"}${h?` <span class="hint">hino ${esc(h)}</span>`:""}</dd></div>`}).join("")}</dl>
+    ${rep.length?`<p class="notice" style="margin:0">${rep.map(r=>`${esc(r.n)} está em ${r.fs.join(" e ")}`).join("; ")}.</p>`:""}
+    <div class="culto-a"><button class="btn sm" data-copiar-culto="${c.id}">Copiar para WhatsApp</button><button class="btn sm pri" data-editar="${c.id}">Editar escala</button></div></article>`};
+  return `<div class="view-title"><div><h2>Escala de cultos</h2><p class="sub">${cs.length} ${cs.length===1?"culto":"cultos"} no mês</p></div>${navMes()}</div>
+  <div class="toolbar"><button class="btn pri" data-act="novo-culto">Novo culto</button><button class="btn" data-act="gerar">Gerar cultos do mês</button>${cs.length?`<button class="btn" data-act="copiar-mes">Copiar o mês para WhatsApp</button>`:""}</div>
+  ${cs.length?`<div class="cultos">${cs.map(card).join("")}</div>`:`<div class="panel"><h3>Nenhum culto em ${mesLabel(st.mes)}</h3><p class="empty">Use <b>Gerar cultos do mês</b> para criar os domingos e os cultos semanais de uma vez (os dias ficam em Configurar), ou crie um culto avulso em <b>Novo culto</b>.</p></div>`}`;
+}
+function dlgCulto(id){
+  const c=id?cultos.find(x=>x.id===id):{data:hoje(),tipo:"domingo",nome:cfg.domingo.nome,horario:cfg.domingo.horario,escalados:{},hinos:{}};if(!c)return;
+  const ult=cultos.filter(x=>x.responsavel).sort((a,b)=>(b.atualizadoEm||"").localeCompare(a.atualizadoEm||""))[0];
+  const resp=c.responsavel||(!id&&ult?ult.responsavel:"");
+  const d=$("#dlg");
+  const campo=(f,i)=>`<input name="${f.k}_${i}" list="dl-nomes" autocomplete="off" value="${esc(escalados(c,f.k)[i]||"")}" placeholder="${(f.qtd||1)>1?(i+1)+"ª pessoa":"Nome"}">`;
+  d.innerHTML=`<form id="fCulto"><div class="dlg-h"><div><h2>${id?"Editar escala":"Novo culto"}</h2><div class="sub">${id?esc(c.nome||"Culto")+" · "+diaSem(c.data)+", "+fmt(c.data):"Preencha o culto e as funções"}</div></div><button type="button" class="btn ghost sm" data-close>Fechar</button></div>
+  <datalist id="dl-nomes">${nomesConhecidos().map(n=>`<option value="${esc(n)}">`).join("")}</datalist>
+  <div class="dlg-b"><div class="form">
+    <label>Data<input type="date" name="data" required value="${esc(c.data)}"></label>
+    <label>Tipo<select name="tipo"><option value="domingo" ${c.tipo==="domingo"?"selected":""}>Domingo</option><option value="semanal" ${c.tipo!=="domingo"?"selected":""}>Semanal</option></select></label>
+    <label>Nome do culto<input name="nome" value="${esc(c.nome)}" placeholder="Ex.: Culto de Domingo"></label>
+    <label>Horário<input type="time" name="horario" value="${esc(c.horario)}"></label>
+    <label class="full">Responsável por fazer a escala<input name="responsavel" list="dl-nomes" autocomplete="off" value="${esc(resp)}"></label>
+  </div>
+  <div class="func-form">${FUNCOES.map(f=>`<div class="ff"><div class="ff-n">${f.ic} ${f.n}</div><div class="ff-i">${Array.from({length:f.qtd||1},(_,i)=>campo(f,i)).join("")}${f.hino?`<input name="hino_${f.k}" class="hino" inputmode="numeric" value="${esc((c.hinos||{})[f.k]||"")}" placeholder="Nº hino" aria-label="Número do hino">`:""}</div></div>`).join("")}</div>
+  <label style="display:grid;gap:4px;font-size:.88rem;font-weight:600;color:var(--muted)">Observações<textarea name="obs" placeholder="Ex.: Santa Ceia, visita de pregador">${esc(c.obs||"")}</textarea></label>
+  </div>
+  <div class="dlg-f">${id?`<button type="button" class="btn danger ghost" data-rm-culto="${id}" style="margin-right:auto">Excluir culto</button>`:""}<button class="btn pri" type="submit">${id?"Salvar escala":"Criar culto"}</button></div></form>`;
+  d.querySelector("#fCulto").addEventListener("submit",async ev=>{ev.preventDefault();const f=ev.target,E=f.elements;
+    const esc2={},hin={};FUNCOES.forEach(fn=>{esc2[fn.k]=Array.from({length:fn.qtd||1},(_,i)=>E[fn.k+"_"+i].value.trim()).filter(Boolean);if(fn.hino)hin[fn.k]=E["hino_"+fn.k].value.trim()});
+    const v={data:E.data.value,tipo:E.tipo.value,nome:E.nome.value.trim(),horario:E.horario.value,responsavel:E.responsavel.value.trim(),escalados:esc2,hinos:hin,obs:E.obs.value.trim(),atualizadoPor:meuEmail,atualizadoEm:new Date().toISOString()};
+    if(!v.data){E.data.focus();return}
+    const ok=id?await gravar(()=>db.collection("cultos").doc(id).update(v),"Escala salva"):await gravar(()=>db.collection("cultos").doc().set({...v,criadoEm:v.atualizadoEm}),"Culto criado");
+    if(ok){st.mes=v.data.slice(0,7);d.close()}});
+  if(!d.open)d.showModal();
+}
+async function gerarMes(){
+  const [y,m]=st.mes.split("-").map(Number);const fim=new Date(y,m,0).getDate();const novos=[];
+  for(let dia=1;dia<=fim;dia++){const d=new Date(y,m-1,dia),ds=iso(d),wd=d.getDay();
+    const modelos=[];if(wd===0&&cfg.domingo&&cfg.domingo.ativo)modelos.push({tipo:"domingo",nome:cfg.domingo.nome,horario:cfg.domingo.horario});
+    (cfg.semanais||[]).filter(s=>+s.dia===wd).forEach(s=>modelos.push({tipo:"semanal",nome:s.nome,horario:s.horario}));
+    modelos.forEach(md=>{if(!cultos.some(c=>c.data===ds&&norm(c.nome)===norm(md.nome)))novos.push({data:ds,...md,escalados:{},hinos:{},responsavel:"",obs:""})})}
+  if(!novos.length){toast("Todos os cultos do mês já estão criados.");return}
+  if(!(await confirmar(`Criar ${novos.length} ${novos.length===1?"culto":"cultos"} em ${mesLabel(st.mes)}?`,"Criar",false)))return;
+  const agora=new Date().toISOString();let n=0;
+  for(const c of novos){if(await gravar(()=>db.collection("cultos").doc().set({...c,criadoEm:agora,atualizadoEm:agora,atualizadoPor:meuEmail})))n++;else break}
+  toast(`${n} ${n===1?"culto criado":"cultos criados"}`);
+}
+
+/* ---------- pessoas ---------- */
+function vPessoas(){return `<div class="view-title"><div><h2>Quem está escalado</h2><p class="sub">Para distribuir as funções sem sobrecarregar ninguém</p></div>${navMes()}</div>
+  <div class="toolbar"><input type="search" id="pBusca" placeholder="Buscar pessoa" value="${esc(st.pBusca)}" aria-label="Buscar pessoa"></div><div id="pLista"></div>`}
+function lPessoas(){
+  const el=$("#pLista");if(!el)return;const mapa={};
+  cultosMes().forEach(c=>FUNCOES.forEach(f=>escalados(c,f.k).forEach(n=>{const k=norm(n);mapa[k]=mapa[k]||{n,itens:[]};mapa[k].itens.push({c,f})})));
+  const q=norm(st.pBusca);const arr=Object.values(mapa).filter(x=>!q||norm(x.n).includes(q)).sort((a,b)=>b.itens.length-a.itens.length||a.n.localeCompare(b.n,"pt-BR"));
+  el.innerHTML=arr.length?`<div class="rows">${arr.map(x=>`<div class="row" style="cursor:default"><span class="t">${esc(x.n)}</span><span class="chip ${x.itens.length>=4?"c-pend":"c-ok"}"><span class="dot"></span>${x.itens.length}× no mês</span><span class="m">${x.itens.map(i=>`${fmtC(i.c.data)} ${esc(i.f.n)}`).join(" · ")}</span></div>`).join("")}</div>`:`<div class="panel"><p class="empty">Ninguém escalado em ${mesLabel(st.mes)}.</p></div>`;
+}
+
+/* ---------- configurar ---------- */
+function vConfig(){
+  const sm=cfg.semanais||[];
+  return `<div class="view-title"><div><h2>Dias de culto</h2><p class="sub">Usados no botão “Gerar cultos do mês”</p></div></div>
+  <form id="fCfg" class="panel" style="display:grid;gap:14px">
+    <div><h3>Domingo</h3><div class="form"><label class="check" style="align-self:end"><input type="checkbox" name="domAtivo" ${cfg.domingo&&cfg.domingo.ativo?"checked":""}> Tem culto aos domingos</label><label>Nome<input name="domNome" value="${esc(cfg.domingo&&cfg.domingo.nome)}"></label><label>Horário<input type="time" name="domHora" value="${esc(cfg.domingo&&cfg.domingo.horario)}"></label></div></div>
+    <div><h3>Cultos semanais</h3><div id="semList">${sm.map((s,i)=>linhaSem(s,i)).join("")}</div><button type="button" class="btn sm" data-act="add-sem" style="margin-top:8px">+ Adicionar culto semanal</button></div>
+    <div style="display:flex;justify-content:flex-end"><button class="btn pri" type="submit">Salvar dias de culto</button></div>
+  </form>
+  ${souAdmin?`<section class="panel" style="margin-top:14px"><h3>Quem pode montar a escala</h3><p class="sub" style="margin:0 0 8px">Só administradores e as pessoas liberadas acessam esta escala.</p><a class="btn" href="./?painel=1#acessos" style="text-decoration:none">Abrir acessos no Painel</a></section>`:""}`;
+}
+function linhaSem(s,i){return `<div class="form sem" style="margin-top:8px;align-items:end"><label>Dia<select name="semDia_${i}">${DIAS.map((d,j)=>j?`<option value="${j}" ${+s.dia===j?"selected":""}>${d}</option>`:"").join("")}</select></label><label>Nome<input name="semNome_${i}" value="${esc(s.nome)}"></label><label>Horário<input type="time" name="semHora_${i}" value="${esc(s.horario)}"></label><div><button type="button" class="btn sm ghost danger" data-rm-sem="${i}">Remover</button></div></div>`}
+function lerCfgForm(f){const E=f.elements;const sem=[];document.querySelectorAll("#semList .sem").forEach((_,i)=>{if(E["semDia_"+i])sem.push({dia:+E["semDia_"+i].value,nome:E["semNome_"+i].value.trim()||"Culto",horario:E["semHora_"+i].value})});return {domingo:{ativo:E.domAtivo.checked,nome:E.domNome.value.trim()||"Culto de Domingo",horario:E.domHora.value},semanais:sem}}
+
+/* ---------- acessos ---------- */
+async function dlgAcessos(){
+  if(!souAdmin)return;const d=$("#dlg");
+  d.innerHTML=`<div class="dlg-h"><div><h2>Acessos da escala de culto</h2><div class="sub">Só quem estiver nesta lista monta a escala</div></div><button class="btn ghost sm" data-close>Fechar</button></div><div class="dlg-b"><div id="acList"><p class="empty">Carregando…</p></div>
+  <form id="fAc" class="form"><label>E-mail Google<input name="email" type="email" required placeholder="nome@gmail.com" autocomplete="off"></label><label>Nome<input name="nome" autocomplete="off"></label><div style="align-self:end"><button class="btn pri" type="submit" style="width:100%">Liberar acesso</button></div></form>
+  <p class="hint" style="margin:0">Se a pessoa já tiver acesso ao Acompanhamento ou à EBD, ela mantém o que tem e ganha também a escala de culto.</p></div>`;
+  d.querySelector("#fAc").addEventListener("submit",async ev=>{ev.preventDefault();const f=ev.target;const em=f.elements.email.value.trim().toLowerCase();if(!/^[^@ ]+@[^@ ]+[.][^@ ]+$/.test(em)){toast("E-mail inválido.");return}if(em===DONO){toast("Esse e-mail já é administrador.");return}
+    const ref=db.collection("acessos").doc(em);let existe=false;try{existe=(await ref.get()).exists}catch(_){}
+    if(await (existe?gravar(()=>ref.update({culto:true}),"Acesso liberado"):gravar(()=>ref.set({email:em,nome:f.elements.nome.value.trim(),papel:"culto",culto:true,liberadoPor:meuEmail,liberadoEm:new Date().toISOString()}),"Acesso liberado"))){f.reset();carregarAcessos()}});
+  if(!d.open)d.showModal();carregarAcessos();
+}
+async function carregarAcessos(){const el=$("#acList");if(!el)return;try{const x=await db.collection("acessos").get();const ac=x.docs.map(y=>({id:y.id,...y.data()})).filter(a=>a.culto===true||a.papel==="culto"||a.papel==="admin").sort((p,q)=>(p.nome||p.id).localeCompare(q.nome||q.id,"pt-BR"));
+  el.innerHTML=`<ul class="list"><li><div class="grow"><div class="t">${esc(DONO)}</div><div class="m">Dono do app · Administrador</div></div></li>${ac.map(a=>`<li><div class="grow"><div class="t">${esc(a.nome||a.id)}</div><div class="m">${esc(a.id)} · ${a.papel==="admin"?"Administrador":a.papel==="culto"?"Só escala de culto":"Também tem outros acessos"}</div></div>${a.papel==="admin"?"":`<button class="btn sm ghost danger" data-rm-ac="${esc(a.id)}" data-so="${a.papel==="culto"?"1":""}">Tirar acesso</button>`}</li>`).join("")}</ul>`}catch(e){console.error(e);el.innerHTML=`<p class="empty">Não foi possível carregar.</p>`}}
+
+/* ---------- eventos ---------- */
+document.addEventListener("click",async ev=>{
+  const t=ev.target.closest("button,a");if(!t)return;const ds=t.dataset;
+  if(ds.close!==undefined){$("#dlg").close();return}
+  if(ds.act==="entrar"){entrar(false);return}
+  if(ds.act==="trocar-conta"){entrar(true);return}
+  if(ds.act==="sair"){firebase.auth().signOut().then(()=>location.reload());return}
+  if(ds.act==="acessos"){dlgAcessos();return}
+  if(ds.mes){st.mes=mesMais(st.mes,+ds.mes);render();return}
+  if(ds.act==="novo-culto"){dlgCulto(null);return}
+  if(ds.editar){dlgCulto(ds.editar);return}
+  if(ds.act==="gerar"){gerarMes();return}
+  if(ds.act==="copiar-mes"){copiar(textoMes());return}
+  if(ds.copiarCulto){const c=cultos.find(x=>x.id===ds.copiarCulto);if(c)copiar(textoCulto(c));return}
+  if(ds.rmCulto){if(await confirmar("Excluir este culto e a escala dele?","Excluir")){if(await gravar(()=>db.collection("cultos").doc(ds.rmCulto).delete(),"Culto excluído"))$("#dlg").close()}return}
+  if(ds.act==="add-sem"){const box=$("#semList");const i=box.querySelectorAll(".sem").length;box.insertAdjacentHTML("beforeend",linhaSem({dia:3,nome:"",horario:"19:30"},i));return}
+  if(ds.rmSem!==undefined){const f=$("#fCfg");const v=lerCfgForm(f);v.semanais.splice(+ds.rmSem,1);cfg=v;render();return}
+  if(ds.rmAc){if(await confirmar(`Tirar o acesso de ${ds.rmAc} à escala de culto?`,"Tirar")){const r=db.collection("acessos").doc(ds.rmAc);if(await gravar(()=>ds.so?r.delete():r.update({culto:false}),"Acesso removido"))carregarAcessos()}return}
+});
+document.addEventListener("input",ev=>{if(ev.target.id==="pBusca"){st.pBusca=ev.target.value;lPessoas()}});
+document.addEventListener("submit",async ev=>{if(ev.target.id==="fCfg"){ev.preventDefault();const v=lerCfgForm(ev.target);if(await gravar(()=>db.collection("cultos_cfg").doc("geral").set(v),"Dias de culto salvos"))cfg=v}});
+
+/* ---------- dados e login ---------- */
+let pend=false;function agendar(){if(pend)return;pend=true;requestAnimationFrame(()=>{pend=false;if(view==="pessoas")lPessoas();else if(view==="escala")render()})}
+function telaLogin(msg,botao,trocar){db=null;document.body.classList.add("sem-acesso");$("#usr").innerHTML="";setSync(msg?"Acesso necessário":"Entre para continuar");
+  $("#app").innerHTML=`<div class="login panel"><h2>Escala de Culto</h2><p class="sub" style="margin:0">Entre com a sua conta Google autorizada.</p>${msg?`<p class="notice" style="margin:0">${esc(msg)}</p>`:""}${botao?`<button class="btn pri" data-act="${trocar?"trocar-conta":"entrar"}">${trocar?"Entrar com outra conta":"Entrar com Google"}</button>`:""}</div>`}
+async function entrar(trocar){const auth=firebase.auth(),p=new firebase.auth.GoogleAuthProvider();p.setCustomParameters({prompt:"select_account"});try{if(trocar)await auth.signOut();await auth.signInWithPopup(p)}catch(e){if(e.code==="auth/popup-blocked"||e.code==="auth/operation-not-supported-in-this-environment")await auth.signInWithRedirect(p);else if(e.code!=="auth/popup-closed-by-user"&&e.code!=="auth/cancelled-popup-request"){console.error(e);telaLogin("Não foi possível entrar. Tente de novo.",true)}}}
+async function carregarDiretorio(fdb){try{const x=await fdb.collection("config").doc("diretorio_ebd").get();membrosDir=x.exists?(x.data().pessoas||[]):[]}catch(e){console.warn(e)}}
+let assinado=false;
+function init(){
+  window.addEventListener("hashchange",route);
+  if(!window.firebase){telaLogin("Não foi possível carregar o Firebase. Recarregue a página.",false);return}
+  firebase.initializeApp(FB_CONFIG);const auth=firebase.auth();auth.getRedirectResult().catch(e=>console.error(e));
+  auth.onAuthStateChanged(async u=>{
+    if(!u){telaLogin("",true);return}
+    meuEmail=(u.email||"").toLowerCase();const fdb=firebase.firestore();let ok=false;papel="";
+    if(meuEmail===DONO){papel="admin";ok=true}else{try{const x=await fdb.collection("acessos").doc(meuEmail).get();if(x.exists){papel=x.data().papel||"lider";ok=papel==="admin"||x.data().culto===true||papel==="culto"}}catch(e){console.error(e)}}
+    if(!ok){telaLogin(`O e-mail ${meuEmail} não tem acesso à escala de culto. Peça ao administrador para liberar.`,true,true);return}
+    souAdmin=papel==="admin";db=fdb;document.body.classList.remove("sem-acesso");
+    $("#usr").innerHTML=`${esc(meuEmail)} · <a class="lnk" href="./?painel=1">‹ Painel</a> · <button class="lnk" data-act="sair">Sair</button>`;
+    route();
+    if(assinado)return;assinado=true;
+    fdb.collection("cultos").onSnapshot(s=>{cultos=s.docs.map(x=>({id:x.id,...x.data()})).filter(c=>c.data);if(!s.metadata.fromCache){loaded.c=true;setSync("Dados sincronizados")}agendar()},e=>{console.error(e);setSync(e.code==="permission-denied"?"Sem permissão. Fale com o administrador.":"Não foi possível carregar os dados.")});
+    fdb.collection("cultos_cfg").doc("geral").get().then(x=>{if(x.exists){cfg=Object.assign({},CFG_PADRAO,x.data());if(view==="configurar")render()}}).catch(e=>console.warn(e));
+    carregarDiretorio(fdb);
+  });
+}
+init();
+})();
+
+</script>
+</body>
+</html>

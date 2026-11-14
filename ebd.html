@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>EBD · Escala e Presença</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<style>
+:root{
+  --bg:#EEF0F5;--surface:#FFFFFF;--surface2:#F6F7FA;--ink:#1A1E31;--muted:#5B6176;--line:#DADDE7;
+  --brand:#2A3889;--brand-ink:#FFFFFF;
+  --part:#1E8656;--cuid:#B9740F;--conn:#2874C6;--danger:#B43A3A;
+  --radius:14px;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#11131B;--surface:#1A1D28;--surface2:#222634;--ink:#E8EAF2;--muted:#9AA0B5;--line:#2E3243;
+    --brand:#8E9DF2;--brand-ink:#11131B;--part:#4CC48D;--cuid:#E8A747;--conn:#69AEF2;--danger:#EE7B7B;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#11131B;--surface:#1A1D28;--surface2:#222634;--ink:#E8EAF2;--muted:#9AA0B5;--line:#2E3243;
+  --brand:#8E9DF2;--brand-ink:#11131B;--part:#4CC48D;--cuid:#E8A747;--conn:#69AEF2;--danger:#EE7B7B;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Figtree,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding-bottom:84px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+h1,h2,h3{font-family:"Bricolage Grotesque",Figtree,system-ui,sans-serif;margin:0;line-height:1.15;letter-spacing:-.01em}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--brand)}
+:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
+
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
+.top-in{max-width:1080px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:16px;justify-content:space-between}
+.top h1{font-size:1.15rem}
+#sync{margin:0;font-size:.8rem;color:var(--muted)}
+.tabs{display:flex;gap:4px}
+.tabs a{text-decoration:none;color:var(--muted);padding:8px 14px;border-radius:999px;font-weight:600;font-size:.95rem}
+.tabs a[aria-current="page"]{background:var(--brand);color:var(--brand-ink)}
+@media (max-width:720px){
+  .tabs{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);justify-content:space-around;padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px));z-index:6}
+  .tabs a{flex:1;text-align:center;padding:10px 2px;font-size:.76rem}
+}
+main{max-width:1080px;margin:0 auto;padding:20px 16px}
+.view-title{display:flex;align-items:end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.view-title h2{font-size:1.6rem}
+.sub{color:var(--muted);margin:2px 0 0;font-size:.95rem}
+
+.btn{border:1px solid var(--line);background:var(--surface);padding:9px 14px;border-radius:10px;font-weight:600;cursor:pointer}
+.btn.pri{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+.btn.sm{padding:6px 10px;font-size:.88rem}
+.btn.ghost{background:transparent}
+.btn.danger{color:var(--danger)}
+.btn:disabled{opacity:.5;cursor:default}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px}
+.panel h3{font-size:1.05rem;margin-bottom:10px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin-top:14px}
+
+/* faixa dos 3 grupos */
+.groups{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+.bar{display:flex;height:14px;background:var(--surface2)}
+.bar span{display:block;height:100%;transition:width .4s}
+.gcols{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.gcol{padding:16px;border-left:1px solid var(--line);cursor:pointer;background:none;border-top:0;border-right:0;border-bottom:0;text-align:left}
+.gcol:first-child{border-left:0}
+.gcol:hover{background:var(--surface2)}
+.gnum{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;font-size:2.6rem;line-height:1}
+.gname{font-weight:600;margin-top:6px;display:flex;align-items:center;gap:6px}
+.gdesc{color:var(--muted);font-size:.86rem}
+.gsplit{font-size:.82rem;color:var(--muted);margin-top:6px}
+@media (max-width:560px){.gcols{grid-template-columns:1fr}.gcol{border-left:0;border-top:1px solid var(--line);display:grid;grid-template-columns:auto 1fr;column-gap:14px;align-items:center}.gcol:first-child{border-top:0}.gnum{grid-row:span 3;font-size:2.2rem;min-width:56px}.gname{margin:0}}
+
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block;flex:none}
+.c-participante{--g:var(--part)} .c-cuidado{--g:var(--cuid)} .c-conectando{--g:var(--conn)} .c-atraso{--g:var(--danger)}
+:root{--lid:#6A3FCF;--aus:#7A8094}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--lid:#B39CF6;--aus:#A3A9BB}}
+:root[data-theme="dark"]{--lid:#B39CF6;--aus:#A3A9BB}
+.c-lider{--g:var(--lid)} .c-ausente{--g:var(--aus)}
+.pl-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.pl-card{display:grid;gap:2px;text-align:left;padding:12px 14px;border:1px solid var(--line);border-left:5px solid var(--fc);border-radius:12px;background:var(--surface);cursor:pointer;font-size:.88rem;color:var(--muted)}
+.pl-card b{color:var(--ink);font-family:"Bricolage Grotesque",sans-serif;font-size:1.1rem}
+.pl-card .pl-n{font-weight:700;color:var(--ink);font-size:.95rem}
+.pl-card.on{background:color-mix(in srgb,var(--fc) 12%,var(--surface));border-color:var(--fc)}
+.pl-at b{color:var(--danger)}
+.lbl{font-size:.88rem;font-weight:600;color:var(--muted);margin-bottom:6px}
+.tags{display:flex;flex-wrap:wrap;gap:6px}
+.tags .tag{display:inline-flex;position:relative;cursor:pointer}
+.tag input{position:absolute;opacity:0;width:1px;height:1px}
+.tag span{padding:6px 12px;border:1px solid var(--line);border-radius:999px;font-weight:600;font-size:.88rem;color:var(--ink);background:var(--surface)}
+.tag input:checked+span{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+.tag input:focus-visible+span{outline:3px solid var(--brand);outline-offset:2px}
+.hero{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-bottom:14px}
+.hero .big{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;font-size:3.2rem;line-height:1;color:var(--brand)}
+.hero .txt{flex:1;min-width:160px}
+.hero .split{display:flex;gap:10px;flex-wrap:wrap}
+.tbl{width:100%;border-collapse:collapse;font-size:.92rem}
+.tbl th,.tbl td{padding:8px 10px;border-top:1px solid var(--line);text-align:right;white-space:nowrap}
+.tbl th:nth-child(-n+2),.tbl td:nth-child(-n+2){text-align:left}
+.tbl thead th{border-top:0;color:var(--muted);font-weight:600;font-size:.82rem}
+.scroll{overflow-x:auto}
+.hbar{display:grid;grid-template-columns:110px 1fr 32px;gap:8px;align-items:center;font-size:.88rem;margin:4px 0}
+.hbar i{display:block;height:10px;border-radius:5px;background:var(--brand)}
+.hbar b{text-align:right}
+.full-span{margin-top:14px}
+.funil{max-width:860px;margin:0 auto}
+.f-top,.f-bottom{display:flex;align-items:center;gap:16px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px 18px;flex-wrap:wrap}
+.f-top{margin-bottom:18px}.f-bottom{margin-top:18px}
+.f-num{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;font-size:2.6rem;line-height:1;color:var(--brand);min-width:56px}
+.f-bottom .btn{margin-left:auto}
+.f-rows{display:grid;gap:6px}
+.f-row{display:grid;grid-template-columns:minmax(90px,.55fr) minmax(0,1.3fr) minmax(0,1fr);align-items:center}
+.f-lid{display:flex;flex-direction:column;align-items:flex-end;text-align:right;font-size:.8rem;line-height:1.3;padding-right:10px;gap:1px;min-width:0}
+.f-lid span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.f-lid .f-lt{font-size:.66rem;text-transform:uppercase;letter-spacing:.06em;color:var(--fc);font-weight:700}
+.f-add{border:1px dashed var(--line);background:none;border-radius:8px;padding:4px 8px;font-size:.75rem;color:var(--muted);cursor:pointer}
+.f-lidb{all:unset;display:flex;flex-direction:column;align-items:flex-end;gap:1px;max-width:100%;cursor:pointer;border-radius:8px;padding:2px 4px}
+.f-lidb:hover,.f-lidb:focus-visible{background:var(--surface2);outline:2px solid var(--fc)}
+.f-box .aus b{color:var(--aus)}
+.f-cell{display:flex;justify-content:center}
+.f-seg{height:74px;border:0;padding:0 4px;cursor:pointer;color:#fff;background:linear-gradient(180deg,color-mix(in srgb,var(--fc) 70%,#fff) 0%,var(--fc) 55%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-family:"Bricolage Grotesque",sans-serif;letter-spacing:.08em;text-transform:uppercase;font-weight:700;font-size:1.05rem;transition:filter .15s}
+.f-seg.f-last{height:104px;padding-bottom:40px}
+.f-seg small{font-family:Figtree,sans-serif;font-size:.78rem;letter-spacing:0;text-transform:none;font-weight:600;opacity:.92}
+.f-seg:hover,.f-seg:focus-visible{filter:brightness(1.15);outline:none}
+.f-info{display:flex;align-items:center;min-width:0}
+.f-line{flex:0 0 32px;border-top:2px dotted var(--fc);position:relative;margin-left:-6px}
+.f-line::after{content:"";position:absolute;right:-4px;top:-5px;width:8px;height:8px;border-radius:50%;background:var(--fc)}
+.f-box{display:flex;flex-wrap:wrap;gap:6px;padding-left:10px;min-width:0}
+.f-box button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 11px;font-size:.85rem;cursor:pointer;color:var(--muted);white-space:nowrap}
+.f-box button b{color:var(--ink);font-family:"Bricolage Grotesque",sans-serif;font-size:1rem;margin-right:2px}
+.f-box button:hover{border-color:var(--fc)}
+.f-box .vis b{color:var(--conn)}
+@media (max-width:600px){.f-row{grid-template-columns:minmax(62px,.6fr) minmax(0,1fr) minmax(0,1fr)}.f-lid{font-size:.66rem;padding-right:4px}.f-seg{font-size:.72rem;letter-spacing:.03em;height:66px}.f-seg small{font-size:.7rem}.f-seg.f-last{height:96px}.f-box{flex-direction:column;align-items:flex-start}.f-box button{padding:3px 9px;font-size:.78rem}.f-line{flex-basis:16px}}
+.seg .segr{position:relative;display:inline-flex;cursor:pointer}
+.segr input{position:absolute;opacity:0;width:1px;height:1px}
+.segr span{padding:8px 14px;font-weight:600;font-size:.9rem;color:var(--muted)}
+.segr input:checked+span{background:var(--surface2);color:var(--ink)}
+.segr input:focus-visible+span{outline:3px solid var(--brand);outline-offset:-3px}
+.pix{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
+#qr{background:#fff;padding:8px;border-radius:10px;line-height:0}
+#qr img,#qr canvas{display:block}
+.cc{display:block;font-size:.75rem;word-break:break-all;background:var(--surface2);padding:8px;border-radius:8px;margin:4px 0 8px;max-height:84px;overflow:auto}
+label.btn{display:inline-flex;align-items:center}
+.deps{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-bottom:14px}
+.dep-h{display:flex;align-items:center;gap:16px;margin-bottom:12px}
+.dep .big{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;font-size:3.2rem;line-height:1;color:var(--brand);min-width:56px}
+.dep-g{display:grid;gap:6px}
+.dep-i{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface2);cursor:pointer;text-align:left}
+.dep-i:hover{border-color:var(--g)}
+.dep-i b{font-family:"Bricolage Grotesque",sans-serif;font-size:1.2rem;color:var(--g)}
+.alerta b{color:var(--danger)}
+#dlg2{width:min(420px,calc(100% - 24px))}
+.btn.danger-pri{background:var(--danger);border-color:var(--danger);color:#fff}
+.dot{background:var(--g)}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:999px;font-size:.8rem;font-weight:600;color:var(--g);background:color-mix(in srgb,var(--g) 14%,transparent);white-space:nowrap}
+
+.list{list-style:none;margin:0;padding:0}
+.list li{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.list li:first-child{border-top:0}
+.list .grow{flex:1;min-width:0}
+.list .t{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.list .m{font-size:.85rem;color:var(--muted)}
+.empty{color:var(--muted);font-size:.92rem;margin:4px 0}
+.stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px}
+.stat{background:var(--surface2);border-radius:10px;padding:10px 12px}
+.stat b{display:block;font-family:"Bricolage Grotesque",sans-serif;font-size:1.5rem}
+.stat span{font-size:.82rem;color:var(--muted)}
+
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+.toolbar input[type=search]{flex:1 1 220px}
+input,select,textarea{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:9px 11px;width:100%}
+textarea{min-height:72px;resize:vertical}
+.toolbar select{width:auto}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface)}
+.seg button{border:0;background:none;padding:8px 12px;cursor:pointer;font-weight:600;font-size:.9rem;color:var(--muted);display:flex;gap:6px;align-items:center}
+.seg button[aria-pressed="true"]{background:var(--surface2);color:var(--ink)}
+
+.rows{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+.row{display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding:12px 16px;border-top:1px solid var(--line);cursor:pointer;width:100%;text-align:left;background:none;border-left:0;border-right:0;border-bottom:0}
+.row:first-child{border-top:0}
+.row:hover{background:var(--surface2)}
+.row .t{font-weight:600}
+.row .m{font-size:.85rem;color:var(--muted);grid-column:1}
+.row .chip{grid-row:1/3;grid-column:2;align-self:center}
+
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.form label{display:grid;gap:4px;font-size:.88rem;font-weight:600;color:var(--muted)}
+.form .full{grid-column:1/-1}
+.check{display:flex!important;gap:8px;align-items:flex-start;font-weight:500!important;color:var(--ink)!important}
+.check input{width:auto;margin-top:4px}
+.hint{font-weight:400;font-size:.8rem;color:var(--muted)}
+
+/* chamada */
+.att{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+.att button{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);cursor:pointer;text-align:left}
+.att button[aria-pressed="true"]{border-color:var(--part);background:color-mix(in srgb,var(--part) 12%,var(--surface))}
+.box{width:22px;height:22px;border-radius:7px;border:2px solid var(--line);flex:none;display:grid;place-items:center;font-size:14px;color:#fff}
+.att button[aria-pressed="true"] .box{background:var(--part);border-color:var(--part)}
+.att .t{font-weight:600;display:block;line-height:1.2}
+.att .m{font-size:.8rem;color:var(--muted)}
+.sticky-save{position:sticky;bottom:76px;margin-top:14px;display:flex;gap:8px;justify-content:flex-end;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:10px 12px}
+@media (min-width:721px){.sticky-save{bottom:12px}}
+.count{margin-right:auto;font-weight:600}
+
+dialog{border:0;border-radius:18px;padding:0;width:min(640px,calc(100% - 24px));max-height:calc(100% - 40px);background:var(--surface);color:var(--ink)}
+dialog::backdrop{background:rgb(10 12 20 / .45)}
+.dlg-h{display:flex;justify-content:space-between;align-items:start;gap:12px;padding:18px 20px 12px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--surface)}
+.dlg-h h2{font-size:1.35rem}
+.dlg-b{padding:16px 20px 20px;display:grid;gap:16px}
+.dlg-f{display:flex;gap:8px;justify-content:flex-end;padding:12px 20px;border-top:1px solid var(--line);position:sticky;bottom:0;background:var(--surface)}
+.info{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px 16px;font-size:.93rem}
+.info span{display:block;color:var(--muted);font-size:.8rem}
+.move{display:flex;gap:8px;flex-wrap:wrap}
+.move button{display:flex;align-items:center;gap:6px}
+.move button[aria-pressed="true"]{border-color:var(--g);background:color-mix(in srgb,var(--g) 14%,var(--surface))}
+.timeline{list-style:none;margin:0;padding:0;font-size:.9rem}
+.timeline li{padding:6px 0 6px 14px;border-left:2px solid var(--line);position:relative}
+.timeline li::before{content:"";position:absolute;left:-6px;top:12px;width:10px;height:10px;border-radius:50%;background:var(--g,var(--muted))}
+.timeline .m{color:var(--muted);font-size:.82rem}
+h4{margin:0 0 6px;font-size:.95rem}
+
+#toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .2s;z-index:20;max-width:90%}
+#toast.on{opacity:1}
+.notice{background:color-mix(in srgb,var(--cuid) 14%,var(--surface));border:1px solid color-mix(in srgb,var(--cuid) 40%,var(--line));padding:10px 14px;border-radius:12px;margin-bottom:14px;font-size:.92rem}
+#usr{margin:0;font-size:.78rem;color:var(--muted)}
+.lnk{background:none;border:0;padding:0;color:var(--brand);font:inherit;cursor:pointer;text-decoration:underline}
+.sem-acesso .tabs{display:none}
+.login{max-width:460px;margin:48px auto;text-align:center;display:grid;gap:14px;justify-items:center}
+.login h2{font-size:1.5rem}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+.c-ok{--g:var(--part)} .c-pend{--g:var(--cuid)} .c-off{--g:var(--muted)}
+.tbl.esc{min-width:640px}
+.tbl.esc td,.tbl.esc th{text-align:left;vertical-align:top;white-space:normal}
+.tbl.esc td:first-child{white-space:nowrap;width:70px}
+.tbl.esc tr.passado td{opacity:.6}
+.esc-cel{display:grid;gap:3px;width:100%;min-height:58px;text-align:left;border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:8px 10px;cursor:pointer;font-size:.85rem;color:var(--muted)}
+.esc-cel b{color:var(--ink);font-size:.92rem}
+.esc-cel .chip{justify-self:start;font-size:.72rem;padding:1px 8px}
+.esc-cel.vazio{border-style:dashed;place-items:center;color:var(--brand);font-weight:600}
+.esc-cel:hover{border-color:var(--brand)}
+.prep-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.prep{display:grid;gap:8px;align-content:start}
+.prep-h{display:flex;justify-content:space-between;gap:10px;align-items:start}
+.prep h3{margin:2px 0 0;font-size:1.05rem}
+.prep .m{font-size:.85rem;color:var(--muted)}
+.prep .btn{justify-self:start}
+.ficon{flex:none;width:42px;height:42px;border-radius:8px;background:var(--surface2);display:grid;place-items:center;font-size:.68rem;font-weight:700;color:var(--muted)}
+.pres-row{display:flex;align-items:center;gap:8px;padding:8px 12px;border-top:1px solid var(--line);flex-wrap:wrap}
+.pres-row:first-child{border-top:0}
+.pres-tg{flex:1 1 220px;display:flex;align-items:center;gap:10px;background:none;border:0;cursor:pointer;text-align:left;padding:4px 0;min-width:0}
+.pres-tg .t{font-weight:600;display:block}
+.pres-tg .m{font-size:.8rem;color:var(--muted)}
+.pres-tg[aria-pressed="true"] .box{background:var(--part);border-color:var(--part)}
+.flag{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px;font-size:.82rem;font-weight:600;color:var(--muted);cursor:pointer}
+.flag.on{border-color:var(--conn);color:var(--conn);background:color-mix(in srgb,var(--conn) 12%,var(--surface))}
+.flag.on.pago{border-color:var(--part);color:var(--part);background:color-mix(in srgb,var(--part) 12%,var(--surface))}
+.bars{display:flex;align-items:flex-end;gap:6px;height:200px;padding-top:18px;overflow-x:auto}
+.bar-col{flex:1 0 34px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:4px}
+.bar-b{width:70%;max-width:42px;background:var(--brand);border-radius:6px 6px 2px 2px;min-height:0}
+.bar-col.fut .bar-l{opacity:.5}
+.bar-v{font-size:.78rem;font-weight:700}
+.bar-l{font-size:.72rem;color:var(--muted)}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-in">
+    <div>
+      <h1>EBD · Escala e Presença</h1>
+      <p id="sync">Carregando…</p>
+      <p id="usr"></p>
+    </div>
+    <nav class="tabs" aria-label="Seções">
+      <a href="#escala">Escala</a>
+      <a href="#preparo">Preparo</a>
+      <a href="#presenca">Presença</a>
+      <a href="#indicadores">Indicadores</a>
+      <a href="#alunos">Alunos</a>
+      <a href="#salas">Salas</a>
+    </nav>
+  </div>
+</header>
+<main id="app"><div class="panel"><p class="empty">Carregando…</p></div></main>
+<dialog id="dlg"></dialog>
+<dialog id="dlg2"></dialog>
+<div id="toast" role="status" aria-live="polite"></div>
+<script>
+(function(){
+"use strict";
+const FB_CONFIG={apiKey:"AIzaSyAjK2jhmt10joTSFT6f6t-V23k_fZp1XUI",authDomain:"acompanhamento-membros.firebaseapp.com",projectId:"acompanhamento-membros",storageBucket:"acompanhamento-membros.firebasestorage.app",messagingSenderId:"127677935199",appId:"1:127677935199:web:a519dcefa289b894dfb5ea"};
+const DONO="diegovida2@gmail.com";
+const MAX_ARQ=700*1024;
+
+let db=null,meuEmail="",meuNome="",meuId="",souAdmin=false;
+let salas=[],aulas=[],alunos=[],membrosNomes=[],membrosDir=[];
+const loaded={s:false,a:false,l:false};
+let view="escala";
+const st={tri:triAtual(),prepFiltro:"proximas",prepProf:"",presData:"",presSala:"",presBusca:"",pres:null,alBusca:"",alSala:""};
+
+/* ---------- utilidades ---------- */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pad=n=>String(n).padStart(2,"0");
+const iso=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+function hoje(){return iso(new Date())}
+const dt=s=>new Date(s+"T00:00:00");
+function fmt(s){if(!s)return "—";const [y,m,d]=s.slice(0,10).split("-");return d+"/"+m+"/"+y}
+const fmtC=s=>s?s.slice(8,10)+"/"+s.slice(5,7):"";
+const norm=s=>String(s||"").normalize("NFD").replace(/[^a-zA-Z0-9 ]/g,"").toLowerCase().replace(/ +/g," ").trim();
+const byNome=(a,b)=>(a.nome||"").localeCompare(b.nome||"","pt-BR");
+function toast(t){const e=$("#toast");e.textContent=t;e.classList.add("on");clearTimeout(toast._t);toast._t=setTimeout(()=>e.classList.remove("on"),2800)}
+function setSync(t){$("#sync").textContent=t}
+const tam=b=>b>1048576?(b/1048576).toFixed(1).replace(".",",")+" MB":Math.round(b/1024)+" KB";
+function triAtual(d){d=d||new Date();return d.getFullYear()+"-T"+(Math.floor(d.getMonth()/3)+1)}
+function triRange(t){const y=+t.slice(0,4),q=+t.slice(6);const m0=(q-1)*3;return [new Date(y,m0,1),new Date(y,m0+3,0)]}
+function triLabel(t){return t.slice(6)+"º trimestre de "+t.slice(0,4)}
+function triOpts(){const out=[];const base=new Date();base.setDate(1);base.setMonth(base.getMonth()-3);for(let i=0;i<4;i++){const d=new Date(base.getFullYear(),base.getMonth()+i*3,1);out.push(triAtual(d))}if(!out.includes(st.tri))out.unshift(st.tri);return out}
+function domingos(t){const [a,b]=triRange(t);const out=[];const d=new Date(a);while(d.getDay()!==0)d.setDate(d.getDate()+1);while(d<=b){out.push(iso(d));d.setDate(d.getDate()+7)}return out}
+const salaNome=id=>(salas.find(s=>s.id===id)||{}).nome||"Sala removida";
+const salasOrd=()=>salas.slice().sort((a,b)=>(a.ordem??99)-(b.ordem??99)||byNome(a,b));
+const aulaId=(data,salaId)=>data+"_"+salaId;
+const aulaDe=(data,salaId)=>aulas.find(a=>a.id===aulaId(data,salaId));
+function confirmar(msg,ok,perigo=true){
+  return new Promise(res=>{const d=$("#dlg2");
+    d.innerHTML=`<form method="dialog"><div class="dlg-b" style="padding-top:20px"><p style="margin:0;font-weight:600">${esc(msg)}</p></div><div class="dlg-f"><button value="nao" class="btn">Cancelar</button><button value="sim" class="btn ${perigo?"danger-pri":"pri"}">${esc(ok||"Confirmar")}</button></div></form>`;
+    d.returnValue="";d.onclose=()=>{d.onclose=null;res(d.returnValue==="sim")};d.showModal()});
+}
+async function gravar(fn,ok){
+  try{await fn();if(ok)toast(ok);return true}
+  catch(e){console.error(e);toast(e&&e.code==="permission-denied"?"Sem permissão para esta ação.":"Não foi possível salvar. Tente de novo.");return false}
+}
+function baixarBlob(blob,nome){const u=URL.createObjectURL(blob);const a=document.createElement("a");a.href=u;a.download=nome;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),5000)}
+async function copiar(t){try{await navigator.clipboard.writeText(t);toast("Copiado")}catch(_){const ta=document.createElement("textarea");ta.value=t;ta.style.position="fixed";ta.style.opacity="0";document.body.appendChild(ta);ta.select();try{document.execCommand("copy");toast("Copiado")}catch(e){toast("Não foi possível copiar.")}ta.remove()}}
+
+/* ---------- roteamento ---------- */
+const VIEWS=["escala","preparo","presenca","indicadores","alunos","salas"];
+function route(){const h=(location.hash||"").slice(1);view=VIEWS.includes(h)?h:"escala";
+  document.querySelectorAll(".tabs a").forEach(a=>{if(a.getAttribute("href")==="#"+view)a.setAttribute("aria-current","page");else a.removeAttribute("aria-current")});
+  render();window.scrollTo(0,0)}
+function triSel(){return `<select data-tri aria-label="Trimestre" style="width:auto">${triOpts().map(t=>`<option value="${t}" ${t===st.tri?"selected":""}>${triLabel(t)}</option>`).join("")}</select>`}
+function render(){
+  if(!db)return;
+  const app=$("#app");
+  const semSala=!salas.length&&view!=="salas"?`<div class="notice">Nenhuma sala cadastrada ainda. ${souAdmin?`<a href="#salas">Cadastre as salas</a> para montar a escala.`:"Peça ao administrador para cadastrar as salas."}</div>`:"";
+  if(view==="escala")app.innerHTML=semSala+vEscala();
+  if(view==="preparo")app.innerHTML=semSala+vPreparo();
+  if(view==="presenca"){app.innerHTML=semSala+vPresenca();lPresenca()}
+  if(view==="indicadores")app.innerHTML=semSala+vIndicadores();
+  if(view==="alunos"){app.innerHTML=vAlunos();lAlunos()}
+  if(view==="salas")app.innerHTML=vSalas();
+}
+
+/* ---------- escala ---------- */
+function vEscala(){
+  const ds=domingos(st.tri),ss=salasOrd();
+  const cel=(d,s)=>{const a=aulaDe(d,s.id);if(!a||!a.professor)return `<button class="esc-cel vazio" data-aula="${d}|${s.id}">${souAdmin?"+ Escalar":"—"}</button>`;
+    const pr=a.preparo&&a.preparo.status==="pronto";
+    return `<button class="esc-cel" data-aula="${d}|${s.id}"><b>${esc(a.professor)}</b>${a.licaoNum||a.licao?`<span>${a.licaoNum?"Lição "+esc(a.licaoNum):""}${a.licaoNum&&a.licao?" · ":""}${esc(a.licao||"")}</span>`:""}<span class="chip ${pr?"c-ok":"c-pend"}"><span class="dot"></span>${pr?"Aula preparada":"Preparo pendente"}</span></button>`};
+  return `<div class="view-title"><div><h2>Escala de professores</h2><p class="sub">${triLabel(st.tri)} · ${ds.length} domingos</p></div><div style="display:flex;gap:8px;flex-wrap:wrap">${triSel()}<button class="btn" data-act="copiar-escala">Copiar para WhatsApp</button></div></div>
+  ${ss.length?`<div class="scroll rows" style="padding:0"><table class="tbl esc"><thead><tr><th>Domingo</th>${ss.map(s=>`<th>${esc(s.nome)}</th>`).join("")}</tr></thead><tbody>${ds.map(d=>`<tr class="${d<hoje()?"passado":""}"><td><b>${fmtC(d)}</b>${d===proxDomingo()?`<div class="hint">próximo</div>`:""}</td>${ss.map(s=>`<td>${cel(d,s)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`:""}`;
+}
+function proxDomingo(){const d=new Date();while(d.getDay()!==0)d.setDate(d.getDate()+1);return iso(d)}
+function profsConhecidos(){return [...new Set([...aulas.map(a=>a.professor).filter(Boolean),...membrosNomes])].sort((a,b)=>a.localeCompare(b,"pt-BR"))}
+function dlgAula(data,salaId){
+  const a=aulaDe(data,salaId)||{};const d=$("#dlg");const ro=souAdmin?"":"disabled";
+  d.innerHTML=`<form id="faula"><div class="dlg-h"><div><h2>${fmt(data)} · ${esc(salaNome(salaId))}</h2><div class="sub">Escala da aula</div></div><button type="button" class="btn ghost sm" data-close>Fechar</button></div>
+  <div class="dlg-b"><div class="form">
+    <label class="full">Professor(a)<input name="professor" list="dl-prof" autocomplete="off" required ${ro} value="${esc(a.professor)}"><datalist id="dl-prof">${profsConhecidos().map(n=>`<option value="${esc(n)}">`).join("")}</datalist></label>
+    <label>Nº da lição<input name="licaoNum" inputmode="numeric" ${ro} value="${esc(a.licaoNum)}"></label>
+    <label>Nome da lição<input name="licao" ${ro} value="${esc(a.licao)}"></label>
+    <label class="full">Tema<input name="tema" ${ro} value="${esc(a.tema)}" placeholder="Ex.: A fé que vence o mundo"></label>
+  </div></div>
+  <div class="dlg-f">${a.id&&souAdmin?`<button type="button" class="btn danger ghost" data-rm-aula="${a.id}" style="margin-right:auto">Remover da escala</button>`:""}${a.id?`<button type="button" class="btn" data-preparo="${a.id}">Preparo da aula</button>`:""}${souAdmin?`<button class="btn pri" type="submit">Salvar</button>`:""}</div></form>`;
+  d.querySelector("#faula").addEventListener("submit",async ev=>{ev.preventDefault();const f=ev.target;
+    const v={data,salaId,tri:triAtual(dt(data)),professor:f.elements.professor.value.trim(),licaoNum:f.elements.licaoNum.value.trim(),licao:f.elements.licao.value.trim(),tema:f.elements.tema.value.trim(),atualizadoEm:new Date().toISOString()};
+    if(!v.professor){f.elements.professor.focus();return}
+    if(await gravar(()=>db.collection("ebd_aulas").doc(aulaId(data,salaId)).set(v,{merge:true}),"Escala salva"))d.close()});
+  if(!d.open)d.showModal();
+}
+function textoEscala(){
+  const ds=domingos(st.tri),ss=salasOrd();const L=[`*Escala EBD · ${triLabel(st.tri)}*`];
+  ds.forEach(d=>{const linhas=ss.map(s=>{const a=aulaDe(d,s.id);return a&&a.professor?`• ${s.nome}: ${a.professor}${a.licaoNum?" (Lição "+a.licaoNum+")":""}`:null}).filter(Boolean);if(linhas.length)L.push("",`*${fmt(d)}*`,...linhas)});
+  return L.join(String.fromCharCode(10));
+}
+
+/* ---------- preparo ---------- */
+function vPreparo(){
+  const h=hoje();let its=aulas.filter(a=>a.tri===st.tri&&a.professor);
+  if(st.prepFiltro==="proximas")its=its.filter(a=>a.data>=h);
+  if(st.prepProf)its=its.filter(a=>a.professor===st.prepProf);
+  its.sort((a,b)=>a.data.localeCompare(b.data)||salaNome(a.salaId).localeCompare(salaNome(b.salaId)));
+  const profs=[...new Set(aulas.filter(a=>a.tri===st.tri&&a.professor).map(a=>a.professor))].sort();
+  const card=a=>{const p=a.preparo||{},pr=p.status==="pronto",na=(p.arquivos||[]).length,nl=(p.links||[]).length;
+    return `<article class="panel prep"><div class="prep-h"><div><div class="m">${fmt(a.data)} · ${esc(salaNome(a.salaId))}</div><h3>${a.licaoNum?"Lição "+esc(a.licaoNum)+" · ":""}${esc(a.licao||"Lição a definir")}</h3>${a.tema?`<div class="m">${esc(a.tema)}</div>`:""}</div><span class="chip ${pr?"c-ok":"c-pend"}"><span class="dot"></span>${pr?"Pronta":"Pendente"}</span></div>
+    <div class="m">Professor(a): <b style="color:var(--ink)">${esc(a.professor)}</b></div>
+    <div class="m">${p.texto?"Roteiro escrito · ":""}${na} ${na===1?"arquivo":"arquivos"} · ${nl} ${nl===1?"link":"links"}</div>
+    <button class="btn ${pr?"":"pri"}" data-preparo="${a.id}">${pr?"Ver preparo":"Preparar aula"}</button></article>`};
+  return `<div class="view-title"><div><h2>Preparo das aulas</h2><p class="sub">Roteiro, imagens, arquivos e vídeos de cada aula</p></div><div style="display:flex;gap:8px;flex-wrap:wrap">${triSel()}</div></div>
+  <div class="toolbar"><div class="seg" role="group" aria-label="Período"><button data-prepf="proximas" aria-pressed="${st.prepFiltro==="proximas"}">Próximas</button><button data-prepf="todas" aria-pressed="${st.prepFiltro==="todas"}">Todo o trimestre</button></div>
+  <select data-prepprof aria-label="Professor" style="width:auto"><option value="">Todos os professores</option>${profs.map(p=>`<option ${st.prepProf===p?"selected":""}>${esc(p)}</option>`).join("")}</select></div>
+  ${its.length?`<div class="prep-grid">${its.map(card).join("")}</div>`:`<div class="panel"><p class="empty">Nenhuma aula escalada ${st.prepFiltro==="proximas"?"daqui para frente ":""}neste trimestre.</p></div>`}`;
+}
+async function dlgPreparo(id){
+  const a=aulas.find(x=>x.id===id);if(!a)return;const p=a.preparo||{};const d=$("#dlg");
+  const links=(p.links||[]),arqs=(p.arquivos||[]);
+  d.innerHTML=`<div class="dlg-h"><div><h2>Preparo · ${fmt(a.data)}</h2><div class="sub">${esc(salaNome(a.salaId))} · ${esc(a.professor)}${a.licao?" · "+esc(a.licao):""}</div></div><button class="btn ghost sm" data-close>Fechar</button></div>
+  <div class="dlg-b">
+    <div><h4>Roteiro da aula</h4><textarea id="prTexto" style="min-height:160px" placeholder="Introdução, tópicos, perguntas para a turma, aplicação…">${esc(p.texto||"")}</textarea><div style="display:flex;justify-content:flex-end;margin-top:6px"><button class="btn sm" data-act="salvar-texto" data-id="${id}">Salvar roteiro</button></div></div>
+    <div><h4>Imagens e arquivos</h4>
+      ${arqs.length?`<ul class="list">${arqs.map(f=>`<li><span class="ficon">${f.tipo&&f.tipo.startsWith("image/")?"IMG":(f.elements.nome.split(".").pop()||"ARQ").toUpperCase().slice(0,4)}</span><div class="grow"><div class="t">${esc(f.elements.nome)}</div><div class="m">${tam(f.tamanho||0)}</div></div><button class="btn sm" data-baixar-arq="${f.id}">Abrir</button><button class="btn sm ghost danger" data-rm-arq="${f.id}" data-aula-id="${id}" aria-label="Remover ${esc(f.elements.nome)}">✕</button></li>`).join("")}</ul>`:`<p class="empty">Nenhum arquivo ainda.</p>`}
+      <label class="btn" style="margin-top:8px">Enviar imagem ou arquivo<input type="file" id="prArq" multiple accept="image/*,.pdf,.doc,.docx,.ppt,.pptx,.txt" hidden></label>
+      <p class="hint" style="margin:6px 0 0">Imagens são reduzidas automaticamente. Outros arquivos (PDF, Word, PowerPoint, texto) até 700 KB. Para vídeos e arquivos maiores, use um link do YouTube ou do Google Drive.</p>
+      <div id="prUp"></div></div>
+    <div><h4>Vídeos e links</h4>
+      ${links.length?`<ul class="list">${links.map((l,i)=>`<li><div class="grow"><div class="t">${esc(l.titulo||l.url)}</div><div class="m" style="word-break:break-all"><a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.url)}</a></div></div><button class="btn sm ghost danger" data-rm-link="${i}" data-aula-id="${id}" aria-label="Remover link">✕</button></li>`).join("")}</ul>`:`<p class="empty">Nenhum link ainda.</p>`}
+      <form id="fLink" class="form" style="margin-top:8px"><label>Título<input name="titulo" placeholder="Ex.: Vídeo de introdução"></label><label>Link<input name="url" type="url" required placeholder="https://youtube.com/…"></label><div style="align-self:end"><button class="btn" type="submit" style="width:100%">Adicionar link</button></div></form></div>
+  </div>
+  <div class="dlg-f"><span class="count">${p.status==="pronto"?"Aula marcada como preparada":"Preparo pendente"}</span><button class="btn ${p.status==="pronto"?"":"pri"}" data-status-prep="${p.status==="pronto"?"pendente":"pronto"}" data-id="${id}">${p.status==="pronto"?"Voltar para pendente":"Marcar como preparada"}</button></div>`;
+  d.dataset.prep=id;
+  d.querySelector("#prArq").addEventListener("change",ev=>enviarArquivos(id,[...ev.target.files]));
+  d.querySelector("#fLink").addEventListener("submit",async ev=>{ev.preventDefault();const f=ev.target;const url=f.elements.url.value.trim();if(!/^https?:[/][/]/.test(url)){toast("O link deve começar com https://");return}
+    const nl=[...links,{titulo:f.elements.titulo.value.trim(),url}];if(await gravar(()=>db.collection("ebd_aulas").doc(id).update({"preparo.links":nl}),"Link adicionado"))setTimeout(()=>dlgPreparo(id),150)});
+  if(!d.open)d.showModal();
+}
+function comprimirImagem(file){return new Promise((res,rej)=>{const img=new Image();const u=URL.createObjectURL(file);img.onload=()=>{URL.revokeObjectURL(u);let w=img.naturalWidth,h=img.naturalHeight;const m=1600;if(w>m||h>m){const r=Math.min(m/w,m/h);w=Math.round(w*r);h=Math.round(h*r)}
+  const c=document.createElement("canvas");c.width=w;c.height=h;c.getContext("2d").drawImage(img,0,0,w,h);let q=0.82,out=c.toDataURL("image/jpeg",q);while(out.length>MAX_ARQ*1.33&&q>0.35){q-=0.12;out=c.toDataURL("image/jpeg",q)}res(out)};img.onerror=()=>{URL.revokeObjectURL(u);rej(new Error("img"))};img.src=u})}
+const lerDataUrl=f=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(f)});
+async function enviarArquivos(aulaIdV,files){
+  const box=$("#prUp");const a=aulas.find(x=>x.id===aulaIdV);if(!a)return;
+  const novos=[];
+  for(const f of files){
+    if(/^video[/]/.test(f.type)){toast("Vídeos: use um link do YouTube ou do Google Drive.");continue}
+    if(box)box.innerHTML=`<p class="empty">Enviando ${esc(f.name)}…</p>`;
+    try{let data,tipo=f.type||"application/octet-stream",nome=f.name;
+      if(/^image[/]/.test(tipo)&&tipo!=="image/gif"&&tipo!=="image/svg+xml"){data=await comprimirImagem(f);tipo="image/jpeg";nome=nome.replace(/[.][^.]+$/,"")+".jpg"}
+      else{if(f.size>MAX_ARQ){toast(`${f.name} passa de 700 KB. Use um link do Google Drive.`);continue}data=await lerDataUrl(f)}
+      const ref=db.collection("ebd_arquivos").doc();const tamanho=Math.round(data.length*0.75);
+      await ref.set({aulaId:aulaIdV,nome,tipo,tamanho,data,enviadoPor:meuEmail,criadoEm:new Date().toISOString()});
+      novos.push({id:ref.id,nome,tipo,tamanho});
+    }catch(e){console.error(e);toast(`Não foi possível enviar ${f.name}.`)}
+  }
+  if(novos.length){const atual=(aulas.find(x=>x.id===aulaIdV).preparo||{}).arquivos||[];await gravar(()=>db.collection("ebd_aulas").doc(aulaIdV).update({"preparo.arquivos":[...atual,...novos]}),novos.length===1?"Arquivo enviado":novos.length+" arquivos enviados");setTimeout(()=>dlgPreparo(aulaIdV),150)}
+  else if(box)box.innerHTML="";
+}
+async function abrirArquivo(id){
+  try{const x=await db.collection("ebd_arquivos").doc(id).get();if(!x.exists){toast("Arquivo não encontrado.");return}const f=x.data();const blob=await (await fetch(f.data)).blob();
+    if(f.tipo&&f.tipo.startsWith("image/")){const u=URL.createObjectURL(blob);const w=window.open(u,"_blank");if(!w)baixarBlob(blob,f.elements.nome);setTimeout(()=>URL.revokeObjectURL(u),60000)}else baixarBlob(blob,f.elements.nome)}
+  catch(e){console.error(e);toast("Não foi possível abrir o arquivo.")}
+}
+
+/* ---------- presença ---------- */
+function vPresenca(){
+  const ds=domingos(st.tri),ss=salasOrd();
+  if(!st.presData||!ds.includes(st.presData)){const h=hoje();st.presData=ds.filter(d=>d<=h).pop()||ds[0]}
+  if(!st.presSala||!salas.some(s=>s.id===st.presSala))st.presSala=ss[0]?ss[0].id:"";
+  const a=st.presSala?aulaDe(st.presData,st.presSala):null;
+  if(!st.pres||st.pres.key!==st.presData+"|"+st.presSala)st.pres={key:st.presData+"|"+st.presSala,set:new Set((a&&a.presentes)||[]),mudou:false};
+  return `<div class="view-title"><div><h2>Presença dos alunos</h2><p class="sub">${a&&a.professor?"Professor(a): "+esc(a.professor)+(a.licao?" · "+esc(a.licao):""):"Aula sem professor escalado"}</p></div><div>${triSel()}</div></div>
+  <div class="toolbar">
+    <select data-presdata aria-label="Domingo" style="width:auto">${ds.map(d=>`<option value="${d}" ${d===st.presData?"selected":""}>${fmt(d)}</option>`).join("")}</select>
+    <select data-pressala aria-label="Sala" style="width:auto">${ss.map(s=>`<option value="${s.id}" ${s.id===st.presSala?"selected":""}>${esc(s.nome)}</option>`).join("")}</select>
+    <input type="search" id="presBusca" placeholder="Buscar aluno ou membro pelo nome" value="${esc(st.presBusca)}" aria-label="Buscar aluno">
+  </div>
+  <div id="presBuscaRes"></div>
+  <div id="presLista"></div>
+  <section class="panel" style="margin-top:14px"><h3>Não encontrou? Cadastre o aluno</h3><form id="fNovoAluno" class="form"><label class="full">Nome completo<input name="nome" required autocomplete="off" list="dl-membros" placeholder="Digite para buscar no cadastro de membros"><datalist id="dl-membros">${membrosDir.map(m=>`<option value="${esc(m.nome)}">`).join("")}</datalist><span class="hint" id="vincInfo"></span></label><label>WhatsApp<input name="whatsapp" inputmode="tel"></label><label>Nascimento<input type="date" name="nascimento"></label><div style="align-self:end"><button class="btn" type="submit" style="width:100%">Cadastrar e marcar presente</button></div></form></section>
+  <div class="sticky-save"><span class="count" id="presCount"></span><button class="btn pri" data-act="salvar-presenca">Salvar presença</button></div>`;
+}
+function lPresenca(){
+  const el=$("#presLista");if(!el||!st.presSala)return;
+  const tri=st.tri;const set=st.pres.set;
+  const lista=alunos.filter(x=>x.salaId===st.presSala||set.has(x.id)).sort(byNome);
+  el.innerHTML=lista.length?`<div class="rows">${lista.map(x=>{const on=set.has(x.id);const r=(x.revistas||{})[tri]||{};return `<div class="pres-row"><button class="pres-tg" data-pres="${x.id}" aria-pressed="${on}"><span class="box">${on?"✓":""}</span><span><span class="t">${esc(x.nome)}</span>${x.salaId!==st.presSala?`<span class="m">Visitante de ${esc(salaNome(x.salaId))}</span>`:""}</span></button>
+    <button class="flag ${r.revista?"on":""}" data-flag="revista" data-aluno="${x.id}" aria-pressed="${!!r.revista}" title="Pegou a revista do trimestre">${r.revista?"✓ ":""}Revista</button>
+    <button class="flag ${r.pago?"on pago":""}" data-flag="pago" data-aluno="${x.id}" aria-pressed="${!!r.pago}" title="Revista paga">${r.pago?"✓ Pago":"Não pago"}</button></div>`}).join("")}</div>`:`<div class="panel"><p class="empty">Nenhum aluno nesta sala ainda. Busque pelo nome ou cadastre abaixo.</p></div>`;
+  $("#presCount").textContent=`${set.size} ${set.size===1?"presente":"presentes"}${st.pres.mudou?" · não salvo":""}`;
+}
+function lBuscaPres(){
+  const el=$("#presBuscaRes");if(!el)return;const q=norm(st.presBusca);if(q.length<2){el.innerHTML="";return}
+  const al=alunos.filter(x=>x.salaId!==st.presSala&&norm(x.nome).includes(q)).slice(0,8);
+  const jaAl=new Set(alunos.map(x=>norm(x.nome)));
+  const mb=membrosNomes.filter(n=>norm(n).includes(q)&&!jaAl.has(norm(n))).slice(0,8);
+  el.innerHTML=(al.length||mb.length)?`<div class="panel" style="margin-bottom:12px"><ul class="list">${al.map(x=>`<li><div class="grow"><div class="t">${esc(x.nome)}</div><div class="m">Aluno de ${esc(salaNome(x.salaId))}</div></div><button class="btn sm" data-add-pres="${x.id}">Marcar presente</button></li>`).join("")}${mb.map(n=>`<li><div class="grow"><div class="t">${esc(n)}</div><div class="m">Membro da igreja, ainda não é aluno</div></div><button class="btn sm pri" data-add-membro="${esc(n)}">Incluir na sala</button></li>`).join("")}</ul></div>`:`<p class="empty" style="margin:0 0 12px">Ninguém encontrado com esse nome. Use o cadastro abaixo.</p>`;
+}
+async function salvarPresenca(){
+  if(!st.presSala)return;const a=aulaDe(st.presData,st.presSala);
+  const body={data:st.presData,salaId:st.presSala,tri:triAtual(dt(st.presData)),presentes:[...st.pres.set],presencaPor:meuEmail,presencaEm:new Date().toISOString()};
+  if(await gravar(()=>db.collection("ebd_aulas").doc(aulaId(st.presData,st.presSala)).set(body,{merge:true}),"Presença salva")){st.pres.mudou=false;lPresenca()}
+}
+async function novoAluno(dados){const ref=db.collection("ebd_alunos").doc();const ok=await gravar(()=>ref.set({...dados,criadoEm:new Date().toISOString(),criadoPor:meuEmail}));return ok?ref.id:null}
+
+/* ---------- indicadores ---------- */
+function vIndicadores(){
+  const ds=domingos(st.tri),ss=salasOrd(),h=hoje();
+  const doTri=aulas.filter(a=>a.tri===st.tri);
+  const pres=(d,sid)=>{const a=doTri.find(x=>x.data===d&&x.salaId===sid);return a&&a.presentes?a.presentes.length:null};
+  const totDia=ds.map(d=>{let t=0,tem=false;ss.forEach(s=>{const p=pres(d,s.id);if(p!=null){t+=p;tem=true}});return {d,t,tem}});
+  const realizados=totDia.filter(x=>x.tem);
+  const media=realizados.length?realizados.reduce((s,x)=>s+x.t,0)/realizados.length:0;
+  const matric=alunos.length;
+  const freq=matric&&realizados.length?Math.round(media/matric*100):0;
+  const rev=alunos.filter(x=>((x.revistas||{})[st.tri]||{}).revista).length,pag=alunos.filter(x=>((x.revistas||{})[st.tri]||{}).pago).length;
+  const escal=doTri.filter(a=>a.professor),prontas=escal.filter(a=>a.preparo&&a.preparo.status==="pronto").length;
+  const max=Math.max(1,...totDia.map(x=>x.t),matric);
+  const barras=totDia.map(x=>`<div class="bar-col ${x.d>h?"fut":""}" title="${fmt(x.d)}: ${x.tem?x.t+" presentes":"sem registro"}"><span class="bar-v">${x.tem?x.t:""}</span><span class="bar-b" style="height:${x.tem?Math.max(4,x.t/max*100):0}%"></span><span class="bar-l">${fmtC(x.d)}</span></div>`).join("");
+  const nAlSala=sid=>alunos.filter(x=>x.salaId===sid).length;
+  const linhas=ss.map(s=>{const vals=ds.map(d=>pres(d,s.id));const reg=vals.filter(v=>v!=null);const m=reg.length?reg.reduce((a,b)=>a+b,0)/reg.length:0;const n=nAlSala(s.id);
+    return `<tr><td>${esc(s.nome)}</td>${vals.map(v=>`<td>${v==null?"·":v}</td>`).join("")}<td><b>${reg.length?m.toFixed(1).replace(".",","):"—"}</b></td><td>${n}</td><td><b>${n&&reg.length?Math.round(m/n*100)+"%":"—"}</b></td></tr>`}).join("");
+  return `<div class="view-title"><div><h2>Indicadores do trimestre</h2><p class="sub">${triLabel(st.tri)}</p></div><div>${triSel()}</div></div>
+  <div class="stat-row">
+    <div class="stat"><b>${realizados.length}/${ds.length}</b><span>Domingos com presença registrada</span></div>
+    <div class="stat"><b>${media?media.toFixed(1).replace(".",","):"—"}</b><span>Média de presentes por domingo</span></div>
+    <div class="stat"><b>${matric}</b><span>Alunos matriculados</span></div>
+    <div class="stat"><b>${freq?freq+"%":"—"}</b><span>Frequência média</span></div>
+    <div class="stat"><b>${rev}/${matric}</b><span>Revistas entregues</span></div>
+    <div class="stat ${rev-pag>0?"alerta":""}"><b>${pag}/${rev}</b><span>Revistas pagas</span></div>
+    <div class="stat"><b>${prontas}/${escal.length}</b><span>Aulas preparadas</span></div>
+  </div>
+  <section class="panel" style="margin-top:14px"><h3>Presentes por semana</h3><div class="bars" role="img" aria-label="Presentes por domingo no trimestre">${barras}</div></section>
+  <section class="panel" style="margin-top:14px"><h3>Frequência por sala</h3><div class="scroll"><table class="tbl"><thead><tr><th>Sala</th>${ds.map(d=>`<th>${fmtC(d)}</th>`).join("")}<th>Média</th><th>Alunos</th><th>Freq.</th></tr></thead><tbody>${linhas||`<tr><td colspan="${ds.length+4}">Cadastre as salas.</td></tr>`}</tbody></table></div><p class="hint" style="margin:8px 0 0">“·” = domingo sem presença registrada. Frequência = média de presentes ÷ alunos da sala.</p></section>`;
+}
+
+/* ---------- alunos ---------- */
+function vAlunos(){
+  return `<div class="view-title"><div><h2>Alunos</h2><p class="sub">${alunos.length} alunos cadastrados</p></div><div>${triSel()}</div></div>
+  <div class="toolbar"><input type="search" id="alBusca" placeholder="Buscar por nome" value="${esc(st.alBusca)}" aria-label="Buscar aluno">
+  <select data-alsala aria-label="Sala" style="width:auto"><option value="">Todas as salas</option>${salasOrd().map(s=>`<option value="${s.id}" ${st.alSala===s.id?"selected":""}>${esc(s.nome)}</option>`).join("")}</select></div><div id="alLista"></div>`;
+}
+function lAlunos(){
+  const el=$("#alLista");if(!el)return;const q=norm(st.alBusca);
+  const doTri=aulas.filter(a=>a.tri===st.tri&&a.presentes);
+  const arr=alunos.filter(x=>(!st.alSala||x.salaId===st.alSala)&&(!q||norm(x.nome).includes(q))).sort(byNome);
+  el.innerHTML=arr.length?`<div class="rows">${arr.map(x=>{const aul=doTri.filter(a=>a.salaId===x.salaId),p=doTri.filter(a=>a.presentes.includes(x.id)).length;const r=(x.revistas||{})[st.tri]||{};
+    return `<button class="row" data-ver-aluno="${x.id}"><span class="t">${esc(x.nome)}</span><span class="chip ${r.pago?"c-ok":r.revista?"c-pend":"c-off"}"><span class="dot"></span>${r.pago?"Revista paga":r.revista?"Revista não paga":"Sem revista"}</span><span class="m">${esc(salaNome(x.salaId))} · ${p} ${p===1?"presença":"presenças"} em ${aul.length} ${aul.length===1?"aula":"aulas"} no trimestre${aul.length?" ("+Math.round(p/aul.length*100)+"%)":""}</span></button>`}).join("")}</div>`:`<div class="panel"><p class="empty">Nenhum aluno encontrado.</p></div>`;
+}
+function dlgAluno(id){
+  const x=alunos.find(a=>a.id===id);if(!x)return;const d=$("#dlg");
+  d.innerHTML=`<form id="fAluno"><div class="dlg-h"><h2>${esc(x.nome)}</h2><button type="button" class="btn ghost sm" data-close>Fechar</button></div><div class="dlg-b"><div class="form">
+    <label class="full">Nome completo<input name="nome" required value="${esc(x.nome)}"></label>
+    <label>Sala<select name="salaId">${salasOrd().map(s=>`<option value="${s.id}" ${s.id===x.salaId?"selected":""}>${esc(s.nome)}</option>`).join("")}</select></label>
+    <label>WhatsApp<input name="whatsapp" inputmode="tel" value="${esc(x.whatsapp)}"></label>
+    <label>Nascimento<input type="date" name="nascimento" value="${esc(x.nascimento)}"></label>
+  </div></div><div class="dlg-f"><button type="button" class="btn danger ghost" data-rm-aluno="${x.id}" style="margin-right:auto">Excluir</button><button class="btn pri" type="submit">Salvar</button></div></form>`;
+  d.querySelector("#fAluno").addEventListener("submit",async ev=>{ev.preventDefault();const f=ev.target;const v={nome:f.elements.nome.value.trim(),salaId:f.elements.salaId.value,whatsapp:f.elements.whatsapp.value.trim(),nascimento:f.elements.nascimento.value};if(!v.nome)return;
+    if(await gravar(()=>db.collection("ebd_alunos").doc(id).update(v),"Aluno atualizado"))d.close()});
+  if(!d.open)d.showModal();
+}
+
+/* ---------- salas ---------- */
+function vSalas(){
+  const ss=salasOrd();
+  return `<div class="view-title"><div><h2>Salas</h2><p class="sub">Turmas da Escola Bíblica Dominical</p></div></div>
+  ${souAdmin?`<section class="panel"><h3>Nova sala</h3><form id="fSala" class="form"><label>Nome da sala<input name="nome" required placeholder="Ex.: Juniores"></label><label>Público<input name="publico" placeholder="Ex.: 9 a 12 anos"></label><label>Ordem<input name="ordem" type="number" min="1" value="${ss.length+1}"></label><div style="align-self:end"><button class="btn pri" type="submit" style="width:100%">Adicionar sala</button></div></form></section>`:""}
+  <section class="panel" style="margin-top:14px">${ss.length?`<ul class="list">${ss.map(s=>`<li><div class="grow"><div class="t">${esc(s.nome)}</div><div class="m">${s.publico?esc(s.publico)+" · ":""}${alunos.filter(x=>x.salaId===s.id).length} alunos</div></div>${souAdmin?`<button class="btn sm ghost danger" data-rm-sala="${s.id}">Remover</button>`:""}</li>`).join("")}</ul>`:`<p class="empty">Nenhuma sala cadastrada.</p>`}</section>`;
+}
+
+/* ---------- administração: quem acessa a EBD ---------- */
+async function dlgAcessos(){
+  if(!souAdmin)return;const d=$("#dlg");
+  d.innerHTML=`<div class="dlg-h"><div><h2>Acessos da EBD</h2><div class="sub">Só quem estiver nesta lista entra na EBD</div></div><button class="btn ghost sm" data-close>Fechar</button></div><div class="dlg-b">
+    <div id="acList"><p class="empty">Carregando…</p></div>
+    <form id="fAc" class="form"><label>E-mail Google<input name="email" type="email" required placeholder="nome@gmail.com" autocomplete="off"></label><label>Nome<input name="nome" autocomplete="off"></label><div style="align-self:end"><button class="btn pri" type="submit" style="width:100%">Liberar acesso à EBD</button></div></form>
+    <p class="hint" style="margin:0">Se a pessoa já for líder no Acompanhamento, ela continua líder e ganha também a EBD. Se for nova, entra só na EBD (professor ou secretaria). Administradores sempre têm acesso.</p></div>`;
+  d.querySelector("#fAc").addEventListener("submit",async ev=>{ev.preventDefault();const f=ev.target;const em=f.elements.email.value.trim().toLowerCase();if(!/^[^@ ]+@[^@ ]+[.][^@ ]+$/.test(em)){toast("E-mail inválido.");return}
+    if(em===DONO){toast("Esse e-mail já é administrador.");return}
+    const ref=db.collection("acessos").doc(em);let existe=false;try{existe=(await ref.get()).exists}catch(_){}
+    const ok=existe?await gravar(()=>ref.update({ebd:true}),"Acesso à EBD liberado"):await gravar(()=>ref.set({email:em,nome:f.elements.nome.value.trim(),papel:"ebd",ebd:true,liberadoPor:meuEmail,liberadoEm:new Date().toISOString()}),"Acesso à EBD liberado");
+    if(ok){f.reset();carregarAcessos()}});
+  if(!d.open)d.showModal();carregarAcessos();
+}
+async function carregarAcessos(){const el=$("#acList");if(!el)return;try{const x=await db.collection("acessos").get();
+  const ac=x.docs.map(y=>({id:y.id,...y.data()})).filter(a=>a.ebd===true||a.papel==="ebd"||a.papel==="admin").sort((p,q)=>(p.nome||p.id).localeCompare(q.nome||q.id,"pt-BR"));
+  const perfil=a=>a.papel==="admin"?"Administrador":a.papel==="ebd"?"Só EBD":"Líder no Acompanhamento + EBD";
+  el.innerHTML=`<ul class="list"><li><div class="grow"><div class="t">${esc(DONO)}</div><div class="m">Dono do app · Administrador</div></div></li>${ac.map(a=>`<li><div class="grow"><div class="t">${esc(a.nome||a.id)}</div><div class="m">${esc(a.id)} · ${perfil(a)}</div></div>${a.papel==="admin"?"":`<button class="btn sm ghost danger" data-rm-ebd="${esc(a.id)}" data-so-ebd="${a.papel==="ebd"?"1":""}">Tirar da EBD</button>`}</li>`).join("")}</ul>`}
+  catch(e){console.error(e);el.innerHTML=`<p class="empty">Não foi possível carregar.</p>`}}
+
+/* ---------- eventos ---------- */
+document.addEventListener("click",async ev=>{
+  const t=ev.target.closest("button,a");if(!t)return;const ds=t.dataset;
+  if(ds.close!==undefined){$("#dlg").close();return}
+  if(ds.act==="entrar"){entrar(false);return}
+  if(ds.act==="trocar-conta"){entrar(true);return}
+  if(ds.act==="sair"){firebase.auth().signOut().then(()=>location.reload());return}
+  if(ds.act==="acessos"){dlgAcessos();return}
+  if(ds.aula){const [d,s]=ds.aula.split("|");if(!souAdmin&&!aulaDe(d,s))return;dlgAula(d,s);return}
+  if(ds.rmAula){if(await confirmar("Remover esta aula da escala? O preparo e a presença dela também saem.","Remover")){if(await gravar(()=>db.collection("ebd_aulas").doc(ds.rmAula).delete(),"Aula removida"))$("#dlg").close()}return}
+  if(ds.act==="copiar-escala"){copiar(textoEscala());return}
+  if(ds.preparo){dlgPreparo(ds.preparo);return}
+  if(ds.prepf){st.prepFiltro=ds.prepf;render();return}
+  if(ds.act==="salvar-texto"){const tx=$("#prTexto").value;await gravar(()=>db.collection("ebd_aulas").doc(ds.id).update({"preparo.texto":tx,"preparo.atualizadoPor":meuEmail,"preparo.atualizadoEm":new Date().toISOString()}),"Roteiro salvo");return}
+  if(ds.statusPrep){const tx=$("#prTexto")?$("#prTexto").value:undefined;const up={"preparo.status":ds.statusPrep};if(tx!==undefined)up["preparo.texto"]=tx;if(await gravar(()=>db.collection("ebd_aulas").doc(ds.id).update(up),ds.statusPrep==="pronto"?"Aula marcada como preparada":"Preparo pendente"))setTimeout(()=>dlgPreparo(ds.id),150);return}
+  if(ds.baixarArq){abrirArquivo(ds.baixarArq);return}
+  if(ds.rmArq){if(!(await confirmar("Remover este arquivo?","Remover")))return;const a=aulas.find(x=>x.id===ds.aulaId);const arr=((a&&a.preparo&&a.preparo.arquivos)||[]).filter(f=>f.id!==ds.rmArq);
+    if(await gravar(async()=>{await db.collection("ebd_arquivos").doc(ds.rmArq).delete();await db.collection("ebd_aulas").doc(ds.aulaId).update({"preparo.arquivos":arr})},"Arquivo removido"))setTimeout(()=>dlgPreparo(ds.aulaId),150);return}
+  if(ds.rmLink!==undefined){const a=aulas.find(x=>x.id===ds.aulaId);const arr=((a&&a.preparo&&a.preparo.links)||[]).filter((_,i)=>i!==+ds.rmLink);if(await gravar(()=>db.collection("ebd_aulas").doc(ds.aulaId).update({"preparo.links":arr}),"Link removido"))setTimeout(()=>dlgPreparo(ds.aulaId),150);return}
+  if(ds.pres){const s=st.pres.set;s.has(ds.pres)?s.delete(ds.pres):s.add(ds.pres);st.pres.mudou=true;lPresenca();return}
+  if(ds.addPres){st.pres.set.add(ds.addPres);st.pres.mudou=true;st.presBusca="";$("#presBusca").value="";lBuscaPres();lPresenca();return}
+  if(ds.addMembro){const mb=membrosDir.find(m=>m.nome===ds.addMembro)||{};const id=await novoAluno({nome:ds.addMembro,salaId:st.presSala,origem:"membro",membroId:mb.id||"",nascimento:mb.nascimento||"",whatsapp:mb.whatsapp||""});if(id){st.pres.set.add(id);st.pres.mudou=true;st.presBusca="";$("#presBusca").value="";lBuscaPres();toast("Incluído na sala");setTimeout(lPresenca,200)}return}
+  if(ds.act==="salvar-presenca"){salvarPresenca();return}
+  if(ds.flag){const x=alunos.find(a=>a.id===ds.aluno);if(!x)return;const r=(x.revistas||{})[st.tri]||{};const nv=!r[ds.flag];
+    const up={};up[ds.flag]=nv;if(ds.flag==="pago"&&nv)up.revista=true;
+    await gravar(()=>db.collection("ebd_alunos").doc(x.id).set({revistas:{[st.tri]:up}},{merge:true}));return}
+  if(ds.verAluno){dlgAluno(ds.verAluno);return}
+  if(ds.rmAluno){if(await confirmar("Excluir este aluno? As presenças registradas continuam nos números antigos.","Excluir")){if(await gravar(()=>db.collection("ebd_alunos").doc(ds.rmAluno).delete(),"Aluno excluído"))$("#dlg").close()}return}
+  if(ds.rmSala){if(await confirmar("Remover esta sala? A escala e os alunos dela ficam sem sala.","Remover"))await gravar(()=>db.collection("ebd_salas").doc(ds.rmSala).delete(),"Sala removida");return}
+  if(ds.rmEbd){if(await confirmar(`Tirar ${ds.rmEbd} da EBD?`,"Tirar")){const r=db.collection("acessos").doc(ds.rmEbd);if(await gravar(()=>ds.soEbd?r.delete():r.update({ebd:false}),"Acesso à EBD removido"))carregarAcessos()}return}
+});
+document.addEventListener("change",ev=>{
+  const e=ev.target;
+  if(e.matches("select[data-tri]")){st.tri=e.value;st.pres=null;st.presData="";render();return}
+  if(e.matches("select[data-prepprof]")){st.prepProf=e.value;render();return}
+  if(e.matches("select[data-presdata]")||e.matches("select[data-pressala]")){
+    if(e.matches("[data-presdata]"))st.presData=e.value;else st.presSala=e.value;st.pres=null;render();return}
+  if(e.matches("select[data-alsala]")){st.alSala=e.value;lAlunos();return}
+});
+document.addEventListener("input",ev=>{
+  if(ev.target.id==="presBusca"){st.presBusca=ev.target.value;lBuscaPres()}
+  if(ev.target.id==="alBusca"){st.alBusca=ev.target.value;lAlunos()}
+  if(ev.target.name==="nome"&&ev.target.form&&ev.target.form.id==="fNovoAluno"){const f=ev.target.form;const mb=membrosDir.find(m=>norm(m.nome)===norm(ev.target.value));const info=$("#vincInfo");
+    if(mb){if(mb.nascimento&&!f.elements.nascimento.value)f.elements.nascimento.value=mb.nascimento;if(mb.whatsapp&&!f.elements.whatsapp.value)f.elements.whatsapp.value=mb.whatsapp;if(info)info.textContent="Membro da igreja: o aluno ficará vinculado ao cadastro."}else if(info)info.textContent=""}
+});
+document.addEventListener("submit",async ev=>{
+  const f=ev.target;
+  if(f.id==="fNovoAluno"){ev.preventDefault();const nome=f.elements.nome.value.trim();if(!nome)return;
+    if(alunos.some(x=>norm(x.nome)===norm(nome))&&!(await confirmar("Já existe um aluno com esse nome. Cadastrar mesmo assim?","Cadastrar",false)))return;
+    const mb=membrosDir.find(m=>norm(m.nome)===norm(nome));
+    const id=await novoAluno({nome,whatsapp:f.elements.whatsapp.value.trim(),nascimento:f.elements.nascimento.value,salaId:st.presSala,origem:mb?"membro":"cadastro EBD",membroId:mb?mb.id:""});
+    if(id){st.pres.set.add(id);st.pres.mudou=true;f.reset();toast("Aluno cadastrado e marcado presente");setTimeout(lPresenca,200)}return}
+  if(f.id==="fSala"){ev.preventDefault();const v={nome:f.elements.nome.value.trim(),publico:f.elements.publico.value.trim(),ordem:+f.elements.ordem.value||99};if(!v.nome)return;
+    if(await gravar(()=>db.collection("ebd_salas").doc().set(v),"Sala adicionada"))f.reset();return}
+});
+window.addEventListener("beforeunload",e=>{if(st.pres&&st.pres.mudou){e.preventDefault();e.returnValue=""}});
+
+/* ---------- dados e login ---------- */
+let pend=false;function agendar(){if(pend)return;pend=true;requestAnimationFrame(()=>{pend=false;atualizar()})}
+function atualizar(){
+  const d=$("#dlg");
+  if(view==="presenca"){if(!$("#presLista"))render();else lPresenca()}
+  else if(view==="alunos")lAlunos();
+  else render();
+  if(d.open&&d.dataset.prep&&!d.querySelector("#prTexto:focus")){}
+}
+function assinar(col,key,set){
+  db.collection(col).onSnapshot(s=>{set(s.docs.map(x=>({id:x.id,...x.data()})));if(!s.metadata.fromCache)loaded[key]=true;if(loaded.s&&loaded.a&&loaded.l)setSync("Dados sincronizados");agendar()},
+    e=>{console.error(e);setSync(e.code==="permission-denied"?"Sem permissão. Fale com o administrador.":"Não foi possível carregar os dados.")});
+}
+function telaLogin(msg,botao,trocar){
+  db=null;document.body.classList.add("sem-acesso");$("#usr").innerHTML="";setSync(msg?"Acesso necessário":"Entre para continuar");
+  $("#app").innerHTML=`<div class="login panel"><h2>EBD · Escala e Presença</h2><p class="sub" style="margin:0">Entre com a sua conta Google autorizada.</p>${msg?`<p class="notice" style="margin:0">${esc(msg)}</p>`:""}${botao?`<button class="btn pri" data-act="${trocar?"trocar-conta":"entrar"}">${trocar?"Entrar com outra conta":"Entrar com Google"}</button>`:""}</div>`;
+}
+async function entrar(trocar){const auth=firebase.auth(),p=new firebase.auth.GoogleAuthProvider();p.setCustomParameters({prompt:"select_account"});
+  try{if(trocar)await auth.signOut();await auth.signInWithPopup(p)}catch(e){if(e.code==="auth/popup-blocked"||e.code==="auth/operation-not-supported-in-this-environment")await auth.signInWithRedirect(p);else if(e.code!=="auth/popup-closed-by-user"&&e.code!=="auth/cancelled-popup-request"){console.error(e);telaLogin("Não foi possível entrar. Tente de novo.",true)}}}
+let assinado=false;
+/* Lista de nomes dos membros para a EBD: o administrador gera a partir do Acompanhamento; professores e líderes leem só nome, nascimento e WhatsApp */
+async function carregarDiretorio(fdb){
+  try{
+    if(souAdmin){
+      const x=await fdb.collection("membros").get();
+      const lista=x.docs.map(y=>{const d=y.data();return {id:y.id,nome:d.nome||"",nascimento:d.nascimento||"",whatsapp:d.whatsapp||""}}).filter(m=>m.nome).sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));
+      membrosDir=lista;
+      const atual=await fdb.collection("config").doc("diretorio_ebd").get();
+      if(!atual.exists||JSON.stringify(atual.data().pessoas||[])!==JSON.stringify(lista))await fdb.collection("config").doc("diretorio_ebd").set({pessoas:lista,atualizadoEm:new Date().toISOString()});
+    }else{
+      const x=await fdb.collection("config").doc("diretorio_ebd").get();membrosDir=x.exists?(x.data().pessoas||[]):[];
+    }
+    membrosNomes=membrosDir.map(m=>m.nome);const dl=document.getElementById("dl-membros");if(dl)dl.innerHTML=membrosDir.map(m=>`<option value="${esc(m.nome)}">`).join("");agendar();
+  }catch(e){console.warn("Lista de membros indisponível",e)}
+}
+function init(){
+  window.addEventListener("hashchange",route);
+  if(!window.firebase){telaLogin("Não foi possível carregar o Firebase. Recarregue a página.",false);return}
+  firebase.initializeApp(FB_CONFIG);const auth=firebase.auth();
+  auth.getRedirectResult().catch(e=>console.error(e));
+  auth.onAuthStateChanged(async u=>{
+    if(!u){telaLogin("",true);return}
+    meuEmail=(u.email||"").toLowerCase();meuId=u.uid;meuNome=u.displayName||meuEmail;
+    const fdb=firebase.firestore();let papel=null;
+    let ebdOk=false;
+    if(meuEmail===DONO)papel="admin";else{try{const x=await fdb.collection("acessos").doc(meuEmail).get();if(x.exists){papel=x.data().papel||"lider";ebdOk=x.data().ebd===true||papel==="ebd"}}catch(e){console.error(e)}}
+    if(!papel){telaLogin(`O e-mail ${meuEmail} ainda não tem acesso. Peça ao administrador para liberar.`,true,true);return}
+    if(papel!=="admin"&&!ebdOk){telaLogin(`O e-mail ${meuEmail} não tem acesso à EBD. Peça ao administrador para liberar.`,true,true);return}
+    souAdmin=papel==="admin";db=fdb;document.body.classList.remove("sem-acesso");
+    $("#usr").innerHTML=`${esc(meuEmail)} · <a class="lnk" href="./?painel=1">‹ Painel</a> · <button class="lnk" data-act="sair">Sair</button>`;
+    route();
+    if(assinado)return;assinado=true;
+    assinar("ebd_salas","s",v=>salas=v.filter(s=>s.nome));
+    assinar("ebd_aulas","a",v=>aulas=v.filter(a=>a.data&&a.salaId));
+    assinar("ebd_alunos","l",v=>alunos=v.filter(a=>a.nome));
+    carregarDiretorio(fdb);
+  });
+}
+init();
+})();
+
+</script>
+</body>
+</html>
