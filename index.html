@@ -1,0 +1,1187 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Acompanhamento de Membros</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#EEF0F5;--surface:#FFFFFF;--surface2:#F6F7FA;--ink:#1A1E31;--muted:#5B6176;--line:#DADDE7;
+  --brand:#2A3889;--brand-ink:#FFFFFF;
+  --part:#1E8656;--cuid:#B9740F;--conn:#2874C6;--danger:#B43A3A;
+  --radius:14px;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#11131B;--surface:#1A1D28;--surface2:#222634;--ink:#E8EAF2;--muted:#9AA0B5;--line:#2E3243;
+    --brand:#8E9DF2;--brand-ink:#11131B;--part:#4CC48D;--cuid:#E8A747;--conn:#69AEF2;--danger:#EE7B7B;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#11131B;--surface:#1A1D28;--surface2:#222634;--ink:#E8EAF2;--muted:#9AA0B5;--line:#2E3243;
+  --brand:#8E9DF2;--brand-ink:#11131B;--part:#4CC48D;--cuid:#E8A747;--conn:#69AEF2;--danger:#EE7B7B;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Figtree,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding-bottom:84px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+h1,h2,h3{font-family:"Bricolage Grotesque",Figtree,system-ui,sans-serif;margin:0;line-height:1.15;letter-spacing:-.01em}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--brand)}
+:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
+
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
+.top-in{max-width:1080px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:16px;justify-content:space-between}
+.top h1{font-size:1.15rem}
+#sync{margin:0;font-size:.8rem;color:var(--muted)}
+.tabs{display:flex;gap:4px}
+.tabs a{text-decoration:none;color:var(--muted);padding:8px 14px;border-radius:999px;font-weight:600;font-size:.95rem}
+.tabs a[aria-current="page"]{background:var(--brand);color:var(--brand-ink)}
+@media (max-width:720px){
+  .tabs{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);justify-content:space-around;padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px));z-index:6}
+  .tabs a{flex:1;text-align:center;padding:10px 2px;font-size:.76rem}
+}
+main{max-width:1080px;margin:0 auto;padding:20px 16px}
+.view-title{display:flex;align-items:end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.view-title h2{font-size:1.6rem}
+.sub{color:var(--muted);margin:2px 0 0;font-size:.95rem}
+
+.btn{border:1px solid var(--line);background:var(--surface);padding:9px 14px;border-radius:10px;font-weight:600;cursor:pointer}
+.btn.pri{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+.btn.sm{padding:6px 10px;font-size:.88rem}
+.btn.ghost{background:transparent}
+.btn.danger{color:var(--danger)}
+.btn:disabled{opacity:.5;cursor:default}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px}
+.panel h3{font-size:1.05rem;margin-bottom:10px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin-top:14px}
+
+/* faixa dos 3 grupos */
+.groups{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+.bar{display:flex;height:14px;background:var(--surface2)}
+.bar span{display:block;height:100%;transition:width .4s}
+.gcols{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.gcol{padding:16px;border-left:1px solid var(--line);cursor:pointer;background:none;border-top:0;border-right:0;border-bottom:0;text-align:left}
+.gcol:first-child{border-left:0}
+.gcol:hover{background:var(--surface2)}
+.gnum{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;font-size:2.6rem;line-height:1}
+.gname{font-weight:600;margin-top:6px;display:flex;align-items:center;gap:6px}
+.gdesc{color:var(--muted);font-size:.86rem}
+.gsplit{font-size:.82rem;color:var(--muted);margin-top:6px}
+@media (max-width:560px){.gcols{grid-template-columns:1fr}.gcol{border-left:0;border-top:1px solid var(--line);display:grid;grid-template-columns:auto 1fr;column-gap:14px;align-items:center}.gcol:first-child{border-top:0}.gnum{grid-row:span 3;font-size:2.2rem;min-width:56px}.gname{margin:0}}
+
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block;flex:none}
+.c-participante{--g:var(--part)} .c-cuidado{--g:var(--cuid)} .c-conectando{--g:var(--conn)} .c-atraso{--g:var(--danger)}
+:root{--lid:#6A3FCF;--aus:#7A8094}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--lid:#B39CF6;--aus:#A3A9BB}}
+:root[data-theme="dark"]{--lid:#B39CF6;--aus:#A3A9BB}
+.c-lider{--g:var(--lid)} .c-ausente{--g:var(--aus)}
+.pl-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.pl-card{display:grid;gap:2px;text-align:left;padding:12px 14px;border:1px solid var(--line);border-left:5px solid var(--fc);border-radius:12px;background:var(--surface);cursor:pointer;font-size:.88rem;color:var(--muted)}
+.pl-card b{color:var(--ink);font-family:"Bricolage Grotesque",sans-serif;font-size:1.1rem}
+.pl-card .pl-n{font-weight:700;color:var(--ink);font-size:.95rem}
+.pl-card.on{background:color-mix(in srgb,var(--fc) 12%,var(--surface));border-color:var(--fc)}
+.pl-at b{color:var(--danger)}
+.lbl{font-size:.88rem;font-weight:600;color:var(--muted);margin-bottom:6px}
+.tags{display:flex;flex-wrap:wrap;gap:6px}
+.tags .tag{display:inline-flex;position:relative;cursor:pointer}
+.tag input{position:absolute;opacity:0;width:1px;height:1px}
+.tag span{padding:6px 12px;border:1px solid var(--line);border-radius:999px;font-weight:600;font-size:.88rem;color:var(--ink);background:var(--surface)}
+.tag input:checked+span{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+.tag input:focus-visible+span{outline:3px solid var(--brand);outline-offset:2px}
+.hero{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-bottom:14px}
+.hero .big{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;font-size:3.2rem;line-height:1;color:var(--brand)}
+.hero .txt{flex:1;min-width:160px}
+.hero .split{display:flex;gap:10px;flex-wrap:wrap}
+.tbl{width:100%;border-collapse:collapse;font-size:.92rem}
+.tbl th,.tbl td{padding:8px 10px;border-top:1px solid var(--line);text-align:right;white-space:nowrap}
+.tbl th:nth-child(-n+2),.tbl td:nth-child(-n+2){text-align:left}
+.tbl thead th{border-top:0;color:var(--muted);font-weight:600;font-size:.82rem}
+.scroll{overflow-x:auto}
+.hbar{display:grid;grid-template-columns:110px 1fr 32px;gap:8px;align-items:center;font-size:.88rem;margin:4px 0}
+.hbar i{display:block;height:10px;border-radius:5px;background:var(--brand)}
+.hbar b{text-align:right}
+.full-span{margin-top:14px}
+.funil{max-width:860px;margin:0 auto}
+.f-top,.f-bottom{display:flex;align-items:center;gap:16px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px 18px;flex-wrap:wrap}
+.f-top{margin-bottom:18px}.f-bottom{margin-top:18px}
+.f-num{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;font-size:2.6rem;line-height:1;color:var(--brand);min-width:56px}
+.f-bottom .btn{margin-left:auto}
+.f-rows{display:grid;gap:6px}
+.f-row{display:grid;grid-template-columns:minmax(90px,.55fr) minmax(0,1.3fr) minmax(0,1fr);align-items:center}
+.f-lid{display:flex;flex-direction:column;align-items:flex-end;text-align:right;font-size:.8rem;line-height:1.3;padding-right:10px;gap:1px;min-width:0}
+.f-lid span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.f-lid .f-lt{font-size:.66rem;text-transform:uppercase;letter-spacing:.06em;color:var(--fc);font-weight:700}
+.f-add{border:1px dashed var(--line);background:none;border-radius:8px;padding:4px 8px;font-size:.75rem;color:var(--muted);cursor:pointer}
+.f-lidb{all:unset;display:flex;flex-direction:column;align-items:flex-end;gap:1px;max-width:100%;cursor:pointer;border-radius:8px;padding:2px 4px}
+.f-lidb:hover,.f-lidb:focus-visible{background:var(--surface2);outline:2px solid var(--fc)}
+.f-box .aus b{color:var(--aus)}
+.f-cell{display:flex;justify-content:center}
+.f-seg{height:74px;border:0;padding:0 4px;cursor:pointer;color:#fff;background:linear-gradient(180deg,color-mix(in srgb,var(--fc) 70%,#fff) 0%,var(--fc) 55%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-family:"Bricolage Grotesque",sans-serif;letter-spacing:.08em;text-transform:uppercase;font-weight:700;font-size:1.05rem;transition:filter .15s}
+.f-seg.f-last{height:104px;padding-bottom:40px}
+.f-seg small{font-family:Figtree,sans-serif;font-size:.78rem;letter-spacing:0;text-transform:none;font-weight:600;opacity:.92}
+.f-seg:hover,.f-seg:focus-visible{filter:brightness(1.15);outline:none}
+.f-info{display:flex;align-items:center;min-width:0}
+.f-line{flex:0 0 32px;border-top:2px dotted var(--fc);position:relative;margin-left:-6px}
+.f-line::after{content:"";position:absolute;right:-4px;top:-5px;width:8px;height:8px;border-radius:50%;background:var(--fc)}
+.f-box{display:flex;flex-wrap:wrap;gap:6px;padding-left:10px;min-width:0}
+.f-box button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 11px;font-size:.85rem;cursor:pointer;color:var(--muted);white-space:nowrap}
+.f-box button b{color:var(--ink);font-family:"Bricolage Grotesque",sans-serif;font-size:1rem;margin-right:2px}
+.f-box button:hover{border-color:var(--fc)}
+.f-box .vis b{color:var(--conn)}
+@media (max-width:600px){.f-row{grid-template-columns:minmax(62px,.6fr) minmax(0,1fr) minmax(0,1fr)}.f-lid{font-size:.66rem;padding-right:4px}.f-seg{font-size:.72rem;letter-spacing:.03em;height:66px}.f-seg small{font-size:.7rem}.f-seg.f-last{height:96px}.f-box{flex-direction:column;align-items:flex-start}.f-box button{padding:3px 9px;font-size:.78rem}.f-line{flex-basis:16px}}
+.seg .segr{position:relative;display:inline-flex;cursor:pointer}
+.segr input{position:absolute;opacity:0;width:1px;height:1px}
+.segr span{padding:8px 14px;font-weight:600;font-size:.9rem;color:var(--muted)}
+.segr input:checked+span{background:var(--surface2);color:var(--ink)}
+.segr input:focus-visible+span{outline:3px solid var(--brand);outline-offset:-3px}
+.pix{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
+#qr{background:#fff;padding:8px;border-radius:10px;line-height:0}
+#qr img,#qr canvas{display:block}
+.cc{display:block;font-size:.75rem;word-break:break-all;background:var(--surface2);padding:8px;border-radius:8px;margin:4px 0 8px;max-height:84px;overflow:auto}
+label.btn{display:inline-flex;align-items:center}
+.deps{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-bottom:14px}
+.dep-h{display:flex;align-items:center;gap:16px;margin-bottom:12px}
+.dep .big{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;font-size:3.2rem;line-height:1;color:var(--brand);min-width:56px}
+.dep-g{display:grid;gap:6px}
+.dep-i{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface2);cursor:pointer;text-align:left}
+.dep-i:hover{border-color:var(--g)}
+.dep-i b{font-family:"Bricolage Grotesque",sans-serif;font-size:1.2rem;color:var(--g)}
+.alerta b{color:var(--danger)}
+#dlg2{width:min(420px,calc(100% - 24px))}
+.btn.danger-pri{background:var(--danger);border-color:var(--danger);color:#fff}
+.dot{background:var(--g)}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:999px;font-size:.8rem;font-weight:600;color:var(--g);background:color-mix(in srgb,var(--g) 14%,transparent);white-space:nowrap}
+
+.list{list-style:none;margin:0;padding:0}
+.list li{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.list li:first-child{border-top:0}
+.list .grow{flex:1;min-width:0}
+.list .t{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.list .m{font-size:.85rem;color:var(--muted)}
+.empty{color:var(--muted);font-size:.92rem;margin:4px 0}
+.stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px}
+.stat{background:var(--surface2);border-radius:10px;padding:10px 12px}
+.stat b{display:block;font-family:"Bricolage Grotesque",sans-serif;font-size:1.5rem}
+.stat span{font-size:.82rem;color:var(--muted)}
+
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+.toolbar input[type=search]{flex:1 1 220px}
+input,select,textarea{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:9px 11px;width:100%}
+textarea{min-height:72px;resize:vertical}
+.toolbar select{width:auto}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface)}
+.seg button{border:0;background:none;padding:8px 12px;cursor:pointer;font-weight:600;font-size:.9rem;color:var(--muted);display:flex;gap:6px;align-items:center}
+.seg button[aria-pressed="true"]{background:var(--surface2);color:var(--ink)}
+
+.rows{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+.row{display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding:12px 16px;border-top:1px solid var(--line);cursor:pointer;width:100%;text-align:left;background:none;border-left:0;border-right:0;border-bottom:0}
+.row:first-child{border-top:0}
+.row:hover{background:var(--surface2)}
+.row .t{font-weight:600}
+.row .m{font-size:.85rem;color:var(--muted);grid-column:1}
+.row .chip{grid-row:1/3;grid-column:2;align-self:center}
+
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.form label{display:grid;gap:4px;font-size:.88rem;font-weight:600;color:var(--muted)}
+.form .full{grid-column:1/-1}
+.check{display:flex!important;gap:8px;align-items:flex-start;font-weight:500!important;color:var(--ink)!important}
+.check input{width:auto;margin-top:4px}
+.hint{font-weight:400;font-size:.8rem;color:var(--muted)}
+
+/* chamada */
+.att{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+.att button{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);cursor:pointer;text-align:left}
+.att button[aria-pressed="true"]{border-color:var(--part);background:color-mix(in srgb,var(--part) 12%,var(--surface))}
+.box{width:22px;height:22px;border-radius:7px;border:2px solid var(--line);flex:none;display:grid;place-items:center;font-size:14px;color:#fff}
+.att button[aria-pressed="true"] .box{background:var(--part);border-color:var(--part)}
+.att .t{font-weight:600;display:block;line-height:1.2}
+.att .m{font-size:.8rem;color:var(--muted)}
+.sticky-save{position:sticky;bottom:76px;margin-top:14px;display:flex;gap:8px;justify-content:flex-end;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:10px 12px}
+@media (min-width:721px){.sticky-save{bottom:12px}}
+.count{margin-right:auto;font-weight:600}
+
+dialog{border:0;border-radius:18px;padding:0;width:min(640px,calc(100% - 24px));max-height:calc(100% - 40px);background:var(--surface);color:var(--ink)}
+dialog::backdrop{background:rgb(10 12 20 / .45)}
+.dlg-h{display:flex;justify-content:space-between;align-items:start;gap:12px;padding:18px 20px 12px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--surface)}
+.dlg-h h2{font-size:1.35rem}
+.dlg-b{padding:16px 20px 20px;display:grid;gap:16px}
+.dlg-f{display:flex;gap:8px;justify-content:flex-end;padding:12px 20px;border-top:1px solid var(--line);position:sticky;bottom:0;background:var(--surface)}
+.info{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px 16px;font-size:.93rem}
+.info span{display:block;color:var(--muted);font-size:.8rem}
+.move{display:flex;gap:8px;flex-wrap:wrap}
+.move button{display:flex;align-items:center;gap:6px}
+.move button[aria-pressed="true"]{border-color:var(--g);background:color-mix(in srgb,var(--g) 14%,var(--surface))}
+.timeline{list-style:none;margin:0;padding:0;font-size:.9rem}
+.timeline li{padding:6px 0 6px 14px;border-left:2px solid var(--line);position:relative}
+.timeline li::before{content:"";position:absolute;left:-6px;top:12px;width:10px;height:10px;border-radius:50%;background:var(--g,var(--muted))}
+.timeline .m{color:var(--muted);font-size:.82rem}
+h4{margin:0 0 6px;font-size:.95rem}
+
+#toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .2s;z-index:20;max-width:90%}
+#toast.on{opacity:1}
+.notice{background:color-mix(in srgb,var(--cuid) 14%,var(--surface));border:1px solid color-mix(in srgb,var(--cuid) 40%,var(--line));padding:10px 14px;border-radius:12px;margin-bottom:14px;font-size:.92rem}
+#usr{margin:0;font-size:.78rem;color:var(--muted)}
+.lnk{background:none;border:0;padding:0;color:var(--brand);font:inherit;cursor:pointer;text-decoration:underline}
+.sem-acesso .tabs{display:none}
+.login{max-width:460px;margin:48px auto;text-align:center;display:grid;gap:14px;justify-items:center}
+.login h2{font-size:1.5rem}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-in">
+    <div>
+      <h1>Acompanhamento de Membros</h1>
+      <p id="sync">Carregando…</p>
+      <p id="usr"></p>
+    </div>
+    <nav class="tabs" aria-label="Seções">
+      <a href="#painel">Painel</a>
+      <a href="#funil">Funil</a>
+      <a href="#pessoas">Pessoas</a>
+      <a href="#chamada">Chamada</a>
+      <a href="#cuidado">Cuidado</a>
+      <a href="#plano">Plano</a>
+    </nav>
+  </div>
+</header>
+<main id="app"><div class="panel"><p class="empty">Carregando…</p></div></main>
+<dialog id="dlg"></dialog>
+<dialog id="dlg2"></dialog>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+"use strict";
+const GRUPOS={
+  lider:{nome:"Líderes",curto:"Líder",desc:"Lideram e cuidam de pessoas"},
+  participante:{nome:"Participantes",curto:"Participante",desc:"Participam e servem"},
+  cuidado:{nome:"Em cuidado",curto:"Em cuidado",desc:"Membros um pouco distantes"},
+  ausente:{nome:"Ausentes",curto:"Ausente",desc:"Membros sem frequência"},
+  conectando:{nome:"Conectando",curto:"Conectando",desc:"Visitantes ou voltando"}
+};
+const ORDEM=["lider","participante","cuidado","ausente","conectando"];
+const MEMBRO_G=["lider","participante","cuidado"];
+const TIPOS_ENCONTRO=["Culto jovem","Célula","Evento","Outro"];
+const TIPOS_CONTATO=["Mensagem","Telefônico","Presencial"];
+const ASSUNTOS=["Ansiedade","Pais","Escola","Namoro","Financeiro","Ausência","Trabalho","Redes sociais"];
+const tagsHtml=(name,sel)=>`<div class="tags" role="group">${ASSUNTOS.map(a=>`<label class="tag"><input type="checkbox" name="${name}" value="${a}" ${sel.includes(a)?"checked":""}><span>${a}</span></label>`).join("")}</div>`;
+const COMO_CHEGOU=["Convite de amigo","Família","Redes sociais","Evento","Outro"];
+const DIAS_SEM_CONTATO=15;
+
+let db=null,user=null,downloads=null,meuId=null,podeEditar=true,meuEmail="",meuNome="",ehAdmin=false;
+let membros=[],encontros=[],cuidados=[],eventos=[],planos=[],cfg={};
+const loaded={m:false,e:false,c:false};
+const nomes={};
+let view="painel";
+const st={busca:"",grupo:"",faixa:"",lider:"",chamada:null,chBusca:"",ctMembro:"",ctFiltro:"pendentes",concluindo:"",chAba:"encontros",planoDep:"",planoSt:"abertas"};
+
+/* ---------- utilidades ---------- */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function hoje(){const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10)}
+const dt=s=>new Date(s+"T00:00:00");
+const dias=(a,b)=>Math.round((dt(b)-dt(a))/864e5);
+function fmt(s){if(!s)return "—";const [y,m,d]=s.slice(0,10).split("-");return d+"/"+m+"/"+y}
+function idade(n){if(!n)return null;const h=dt(hoje()),b=dt(n);let a=h.getFullYear()-b.getFullYear();if(h.getMonth()<b.getMonth()||(h.getMonth()===b.getMonth()&&h.getDate()<b.getDate()))a--;return a}
+const DEPS=[{v:"Homens",n:"Homens",c:"#7B3FE4"},{v:"Mulheres",n:"Mulheres",c:"#5A4BD6"},{v:"Jovem",n:"Jovens",c:"#3B6FE0"},{v:"Adolescente",n:"Adolescentes",c:"#2193C4"},{v:"Criança",n:"Crianças",c:"#1FB89C"}];
+const DEP_VALS=DEPS.map(d=>d.v);
+const depOpts=sel=>DEPS.map(d=>`<option value="${d.v}" ${sel===d.v?"selected":""}>${d.n}</option>`).join("");
+function faixa(m){if(DEP_VALS.includes(m.faixa))return m.faixa;const a=idade(m.nascimento);if(a==null)return "Sem idade";if(a<12)return "Criança";if(a>=12&&a<=17)return "Adolescente";if(a>=18&&a<=29)return "Jovem";return "Outra faixa"}
+const ehMenor=m=>{if(m.faixa==="Adolescente"||m.faixa==="Criança")return true;if(m.faixa==="Homens"||m.faixa==="Mulheres"||m.faixa==="Jovem")return false;const a=idade(m.nascimento);return a!=null&&a<18};
+const chip=g=>`<span class="chip c-${g}"><span class="dot"></span>${esc(GRUPOS[g]?.curto||g)}</span>`;
+const byNome=(a,b)=>(a.nome||"").localeCompare(b.nome||"","pt-BR");
+function toast(t){const e=$("#toast");e.textContent=t;e.classList.add("on");clearTimeout(toast._t);toast._t=setTimeout(()=>e.classList.remove("on"),2600)}
+function setSync(t){$("#sync").textContent=t}
+function confirmar(msg,ok,perigo=true,campo=null){
+  return new Promise(res=>{const d=$("#dlg2");
+    d.innerHTML=`<form method="dialog"><div class="dlg-b" style="padding-top:20px"><p style="margin:0;font-weight:600">${esc(msg)}</p>${campo?`<label style="display:grid;gap:4px;font-size:.88rem;color:var(--muted)">${esc(campo)}<input id="c2in" autocomplete="off"></label>`:""}</div><div class="dlg-f"><button value="nao" class="btn">Cancelar</button><button value="sim" class="btn ${perigo?"danger-pri":"pri"}">${esc(ok||"Confirmar")}</button></div></form>`;
+    d.returnValue="";
+    d.onclose=()=>{d.onclose=null;const sim=d.returnValue==="sim";res(campo?(sim?(d.querySelector("#c2in")?.value||"").trim():null):sim)};
+    d.showModal();
+    const inp=d.querySelector("#c2in");if(inp){inp.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();d.close("sim")}});inp.focus()}
+  });
+}
+const membroPorId=id=>membros.find(m=>m.id===id);
+function nomeUsuario(id){if(!id)return "";return nomes[id]||"Alguém da equipe"}
+
+async function gravar(fn,ok){
+  if(!podeEditar){toast("Seu acesso é só de leitura.");return false}
+  try{await fn();if(ok)toast(ok);return true}
+  catch(e){
+    if(e&&e.code==="permission-denied"){toast("Sem permissão para gravar. Verifique seu acesso.")}
+    else if(e&&e.code==="quota_exceeded")toast("Limite de dados atingido. Exclua registros antigos.");
+    else toast("Não foi possível salvar. Tente de novo.");
+    console.error(e);return false
+  }
+}
+
+/* ---------- análise de presença ---------- */
+function analise(m){
+  const desde=(m.primeiraVisita||(m.criadoEm||"").slice(0,10)||"0000-00-00");
+  const ev=encontros.filter(e=>e.data>=desde).sort((a,b)=>b.data.localeCompare(a.data));
+  let seguidas=0;for(const e of ev){if((e.presentes||[]).includes(m.id))break;seguidas++}
+  const pres=ev.filter(e=>(e.presentes||[]).includes(m.id));
+  const h=hoje();
+  const p30=pres.filter(e=>dias(e.data,h)<=30).length;
+  const p60=pres.filter(e=>dias(e.data,h)<=60).length;
+  const c=cuidados.filter(x=>x.membroId===m.id&&x.status==="concluido"&&x.dataAcao).sort((a,b)=>b.dataAcao.localeCompare(a.dataAcao));
+  const pend=cuidados.filter(x=>x.membroId===m.id&&x.status!=="concluido").sort((a,b)=>(a.prazo||"9").localeCompare(b.prazo||"9"));
+  return {seguidas,p30,p60,ultimaPresenca:pres[0]?.data||null,ultimoContato:c[0]?.dataAcao||null,contatos:c,pendentes:pend,encontrosPossiveis:ev.length,presencas:pres.length};
+}
+function sugestao(m,a){
+  if(m.dispensarAte&&m.dispensarAte>=hoje())return null;
+  if(m.grupo==="participante"&&a.seguidas>=3)return {para:"cuidado",motivo:`${a.seguidas} ausências seguidas`};
+  if(m.grupo==="conectando"&&a.p60>=4)return {para:"participante",motivo:`${a.p60} presenças nos últimos 60 dias`};
+  if(m.grupo==="cuidado"&&a.p30>=3)return {para:"participante",motivo:`Voltou: ${a.p30} presenças em 30 dias`};
+  return null;
+}
+
+/* ---------- ações ---------- */
+async function moverGrupo(m,para,motivo){
+  if(m.grupo===para)return;
+  const hist=(m.historico||[]).slice();
+  hist.push({de:m.grupo,para,data:new Date().toISOString(),motivo:motivo||"",por:meuId||""});
+  await gravar(()=>db.collection("membros").doc(m.id).update({grupo:para,historico:hist,dispensarAte:""}),`Movido para ${GRUPOS[para].nome}`);
+}
+
+/* ---------- roteamento ---------- */
+function route(){
+  const h=(location.hash||"").slice(1);
+  view=["painel","funil","pessoas","chamada","cuidado","plano"].includes(h)?h:"painel";
+  document.querySelectorAll(".tabs a").forEach(a=>{if(a.getAttribute("href")==="#"+view)a.setAttribute("aria-current","page");else a.removeAttribute("aria-current")});
+  render();window.scrollTo(0,0);
+}
+function render(){
+  const app=$("#app");
+  if(!db)return;
+  const ro=podeEditar?"":`<div class="notice">Você está vendo em modo leitura. Peça ao responsável acesso de colaborador para registrar dados.</div>`;
+  if(view==="painel")app.innerHTML=ro+vPainel();
+  if(view==="funil")app.innerHTML=ro+vFunil();
+  if(view==="plano")app.innerHTML=ro+vPlano();
+  if(view==="pessoas"){app.innerHTML=ro+vPessoas();lPessoas()}
+  if(view==="chamada"){app.innerHTML=ro+vChamada();lChamada()}
+  if(view==="cuidado"){app.innerHTML=ro+vCuidado();lCuidado()}
+}
+
+/* ---------- painel ---------- */
+function vPainel(){
+  if(!membros.length)return `<div class="view-title"><div><h2>Painel</h2><p class="sub">Visão geral do acompanhamento</p></div></div>
+  <div class="panel"><h3>Comece cadastrando as pessoas</h3><p class="empty">Cadastre adolescentes e jovens e classifique cada um em Participantes, Em cuidado ou Conectando. Depois, faça a chamada dos encontros para o painel sugerir movimentações.</p><p><button class="btn pri" data-act="novo">Cadastrar pessoa</button></p></div>`;
+  const tot=membros.length,cont={},split={};
+  ORDEM.forEach(g=>{cont[g]=0;split[g]={a:0,j:0}});
+  membros.forEach(m=>{if(cont[m.grupo]==null)return;cont[m.grupo]++;const f=faixa(m);if(f==="Adolescente")split[m.grupo].a++;if(f==="Jovem")split[m.grupo].j++});
+  const bar=ORDEM.map(g=>`<span class="c-${g}" style="width:${tot?cont[g]/tot*100:0}%;background:var(--g)"></span>`).join("");
+  const cols=ORDEM.map(g=>`<button class="gcol c-${g}" data-goto-grupo="${g}"><div class="gnum" style="color:var(--g)">${cont[g]}</div><div class="gname">${GRUPOS[g].nome}</div><div class="gdesc">${GRUPOS[g].desc}</div><div class="gsplit">${split[g].a} adolescentes, ${split[g].j} jovens</div></button>`).join("");
+
+  const an=new Map(membros.map(m=>[m.id,analise(m)]));
+  const sug=membros.map(m=>({m,s:sugestao(m,an.get(m.id))})).filter(x=>x.s);
+  const sugHtml=sug.length?`<ul class="list">${sug.map(({m,s})=>`<li><div class="grow"><div class="t">${esc(m.nome)}</div><div class="m">${chip(m.grupo)} para ${chip(s.para)} · ${esc(s.motivo)}</div></div>${podeEditar?`<button class="btn sm pri" data-aceitar="${m.id}" data-para="${s.para}" data-motivo="${esc(s.motivo)}">Mover</button><button class="btn sm ghost" data-dispensar="${m.id}" title="Não sugerir por 30 dias">Ignorar</button>`:""}</li>`).join("")}</ul>`:`<p class="empty">Nenhuma movimentação sugerida agora. As sugestões aparecem com base na chamada dos encontros.</p>`;
+
+  const h=hoje();
+  const semContato=membros.filter(m=>m.grupo!=="participante"&&m.grupo!=="lider").map(m=>{const a=an.get(m.id);const ref=a.ultimoContato;return {m,d:ref?dias(ref,h):null}}).filter(x=>x.d==null||x.d>DIAS_SEM_CONTATO).sort((a,b)=>(b.d??9999)-(a.d??9999));
+  const scHtml=semContato.length?`<ul class="list">${semContato.slice(0,8).map(({m,d})=>`<li><span class="dot c-${m.grupo}"></span><div class="grow"><div class="t">${esc(m.nome)}</div><div class="m">${d==null?"Nenhum contato registrado":`Último contato há ${d} dias`}${m.lider?" · "+esc(m.lider):""}</div></div><button class="btn sm" data-contato="${m.id}">Agendar contato</button></li>`).join("")}</ul>${semContato.length>8?`<p class="empty">E mais ${semContato.length-8} pessoas.</p>`:""}`:`<p class="empty">Todos em cuidado e conectando receberam contato nos últimos ${DIAS_SEM_CONTATO} dias.</p>`;
+
+  const mes=h.slice(0,7),mesN=dt(h).getMonth();
+  const aniv=membros.filter(m=>m.nascimento&&dt(m.nascimento).getMonth()===mesN).sort((a,b)=>a.nascimento.slice(8).localeCompare(b.nascimento.slice(8)));
+  const anivHtml=aniv.length?`<ul class="list">${aniv.map(m=>`<li><span class="dot c-${m.grupo}"></span><div class="grow"><div class="t">${esc(m.nome)}</div><div class="m">Dia ${m.nascimento.slice(8,10)} · faz ${dt(h).getFullYear()-dt(m.nascimento).getFullYear()} anos</div></div></li>`).join("")}</ul>`:`<p class="empty">Nenhum aniversariante neste mês.</p>`;
+
+  let novos=0,c2p=0,cu2p=0,p2c=0;
+  membros.forEach(m=>{(m.historico||[]).forEach(x=>{if(!x.data||x.data.slice(0,7)!==mes)return;if(!x.de)novos++;else if(x.de==="conectando"&&x.para==="participante")c2p++;else if(x.de==="cuidado"&&x.para==="participante")cu2p++;else if(x.de==="participante"&&x.para==="cuidado")p2c++})});
+  const ult=encontros.slice().sort((a,b)=>b.data.localeCompare(a.data)).slice(0,8);
+  const media=ult.length?Math.round(ult.reduce((s,e)=>s+(e.presentes||[]).length,0)/ult.length):0;
+  const membrosTot=cont.participante+cont.cuidado,memA=split.participante.a+split.cuidado.a,memJ=split.participante.j+split.cuidado.j;
+  const pendC=cuidados.filter(c=>c.status!=="concluido"),atrasC=pendC.filter(c=>c.prazo&&c.prazo<h);
+  const concMes=cuidados.filter(c=>c.status==="concluido"&&(c.dataAcao||"").slice(0,7)===mes);
+  const noPrazo=concMes.filter(c=>!c.prazo||c.dataAcao<=c.prazo).length;
+  const comAcao=new Set(pendC.map(c=>c.membroId));
+  const cuidSemAcao=membros.filter(m=>m.grupo==="cuidado"&&!comAcao.has(m.id)).length;
+  const tal={};cuidados.filter(c=>c.status==="concluido"&&c.dataAcao&&dias(c.dataAcao,h)<=90).forEach(c=>(c.assuntosAbordados||[]).forEach(a=>tal[a]=(tal[a]||0)+1));
+  const tops=Object.entries(tal).sort((a,b)=>b[1]-a[1]),maxT=tops[0]?.[1]||1;
+  const assHtml=tops.length?tops.map(([a,n])=>`<div class="hbar"><span>${esc(a)}</span><i style="width:${n/maxT*100}%"></i><b>${n}</b></div>`).join(""):`<p class="empty">Os assuntos aparecem quando as ações forem concluídas.</p>`;
+  const pendSort=pendC.slice().sort((a,b)=>(a.prazo||"9").localeCompare(b.prazo||"9")).slice(0,6);
+  const pendHtml=pendSort.length?`<ul class="list">${pendSort.map(c=>{const m=membroPorId(c.membroId);const at=c.prazo&&c.prazo<h;return `<li><span class="chip ${at?"c-atraso":"c-cuidado"}">${at?"Atrasado":"Pendente"}</span><div class="grow"><div class="t">${esc(m?.nome||"Pessoa removida")}</div><div class="m">${esc(c.tipo)} até ${fmt(c.prazo)}</div></div></li>`}).join("")}</ul>`:`<p class="empty">Nenhuma ação pendente.</p>`;
+  const fxMap=new Map(membros.map(m=>[m.id,faixa(m)]));
+  const contaF=e=>{let a=0,j=0;(e.presentes||[]).forEach(id=>{const f=fxMap.get(id);if(f==="Adolescente")a++;else if(f==="Jovem")j++});return {a,j,t:(e.presentes||[]).length}};
+  const encMes=encontros.filter(e=>(e.data||"").slice(0,7)===mes);
+  const tm=encMes.reduce((s,e)=>{const c=contaF(e);s.a+=c.a;s.j+=c.j;return s},{a:0,j:0});
+  const med=n=>encMes.length?(n/encMes.length).toFixed(1).replace(".",","):"—";
+  const encRows=ult.map(e=>{const c=contaF(e);return `<tr><td>${fmt(e.data)}</td><td>${esc(e.tipo)}${e.titulo?" · "+esc(e.titulo):""}</td><td>${c.a}</td><td>${c.j}</td><td>${c.t}</td></tr>`}).join("");
+
+  return `<div class="view-title"><div><h2>Painel</h2><p class="sub">${tot} pessoas acompanhadas</p></div>${podeEditar?`<button class="btn pri" data-act="novo">Cadastrar pessoa</button>`:""}</div>
+  <div class="deps">${[["Adolescente","a","Adolescentes"],["Jovem","j","Jovens"]].map(([f,k,n])=>{const tt=split.lider[k]+split.participante[k]+split.cuidado[k];return `<section class="panel dep"><div class="dep-h"><div class="big">${tt}</div><div><h3 style="margin:0">${n}</h3><div class="gdesc">Membros: Líderes + Participantes + Em cuidado</div></div></div><div class="dep-g">${ORDEM.map(g=>`<button class="dep-i c-${g}" data-goto-grupo="${g}" data-goto-faixa="${f}"><span class="dot"></span><span>${GRUPOS[g].nome}${(g==="conectando"||g==="ausente")?' <span class="hint">(fora do total)</span>':""}</span><b>${split[g][k]}</b></button>`).join("")}</div></section>`}).join("")}</div>
+  <section class="groups" aria-label="Distribuição por grupo"><div class="bar">${bar}</div><div class="gcols">${cols}</div></section>
+  <section class="panel full-span"><h3>Gestão do cuidado</h3><div class="stat-row">
+    <div class="stat"><b>${pendC.length}</b><span>Ações pendentes</span></div>
+    <div class="stat ${atrasC.length?"alerta":""}"><b>${atrasC.length}</b><span>Atrasadas</span></div>
+    <div class="stat"><b>${concMes.length}</b><span>Concluídas no mês</span></div>
+    <div class="stat"><b>${concMes.length?Math.round(noPrazo/concMes.length*100)+"%":"—"}</b><span>Concluídas no prazo</span></div>
+    <div class="stat ${cuidSemAcao?"alerta":""}"><b>${cuidSemAcao}</b><span>Em cuidado sem ação agendada</span></div>
+  </div><div class="grid2"><div><h4>Assuntos mais abordados (90 dias)</h4>${assHtml}</div><div><h4>Próximas ações</h4>${pendHtml}<p style="margin:8px 0 0"><a href="#cuidado">Abrir o Cuidado</a></p></div></div></section>
+  <section class="panel full-span"><h3>Encontros por faixa</h3><div class="stat-row">
+    <div class="stat"><b>${encMes.length}</b><span>Encontros no mês</span></div>
+    <div class="stat"><b>${tm.a}</b><span>Presenças de adolescentes no mês</span></div>
+    <div class="stat"><b>${tm.j}</b><span>Presenças de jovens no mês</span></div>
+    <div class="stat"><b>${med(tm.a)}</b><span>Adolescentes por encontro</span></div>
+    <div class="stat"><b>${med(tm.j)}</b><span>Jovens por encontro</span></div>
+  </div>${ult.length?`<div class="scroll" style="margin-top:12px"><table class="tbl"><thead><tr><th>Data</th><th>Encontro</th><th>Adolescentes</th><th>Jovens</th><th>Total</th></tr></thead><tbody>${encRows}</tbody></table></div>`:`<p class="empty" style="margin-top:10px">Faça a chamada dos encontros para ver os números.</p>`}</section>
+  <div class="grid2">
+    <section class="panel"><h3>Movimento do mês</h3><div class="stat-row">
+      <div class="stat"><b>${novos}</b><span>Novos cadastros</span></div>
+      <div class="stat"><b>${c2p}</b><span>Conectando para Participante</span></div>
+      <div class="stat"><b>${cu2p}</b><span>Voltaram do cuidado</span></div>
+      <div class="stat"><b>${p2c}</b><span>Entraram em cuidado</span></div>
+      <div class="stat"><b>${media}</b><span>Média de presentes (últimos ${ult.length||0} encontros)</span></div>
+    </div></section>
+    <section class="panel"><h3>Sugestões de movimentação</h3>${sugHtml}</section>
+    <section class="panel"><h3>Precisam de contato</h3>${scHtml}</section>
+    <section class="panel"><h3>Aniversariantes do mês</h3>${anivHtml}</section>
+  </div>`;
+}
+
+/* ---------- pessoas ---------- */
+function vPessoas(){
+  const lideres=[...new Set(membros.map(m=>m.lider).filter(Boolean))].sort();
+  return `<div class="view-title"><div><h2>Pessoas</h2><p class="sub">Cadastro e acompanhamento individual</p></div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">${podeEditar||downloads?`<button class="btn" data-act="link-cadastro">Link de cadastro</button>`:""}${podeEditar?`<button class="btn" data-act="importar">Importar planilha</button>`:""}${downloads?`<button class="btn" data-act="exportar">Exportar planilha</button>`:""}${podeEditar?`<button class="btn pri" data-act="novo">Cadastrar pessoa</button>`:""}</div></div>
+  <div class="toolbar">
+    <input type="search" id="busca" placeholder="Buscar por nome, bairro ou ministério" value="${esc(st.busca)}" aria-label="Buscar">
+    <div class="seg" role="group" aria-label="Grupo">
+      <button data-fgrupo="" aria-pressed="${!st.grupo}">Todos</button>
+      ${ORDEM.map(g=>`<button class="c-${g}" data-fgrupo="${g}" aria-pressed="${st.grupo===g}"><span class="dot"></span>${GRUPOS[g].nome}</button>`).join("")}
+    </div>
+    <select id="ffaixa" aria-label="Departamento"><option value="">Todos os departamentos</option>${depOpts(st.faixa)}<option value="__sem" ${st.faixa==="__sem"?"selected":""}>Sem departamento</option></select>
+    <select id="flider" aria-label="Líder"><option value="">Todos os líderes</option>${lideres.map(l=>`<option ${st.lider===l?"selected":""}>${esc(l)}</option>`).join("")}</select>
+  </div>
+  <div id="lista"></div>`;
+}
+function lPessoas(){
+  const q=st.busca.trim().toLowerCase();
+  const arr=membros.filter(m=>(!st.grupo||m.grupo===st.grupo)&&(!st.faixa||faixa(m)===st.faixa||(st.faixa==="__sem"&&!DEP_VALS.includes(faixa(m))))&&(!st.lider||m.lider===st.lider)&&(!q||[m.nome,m.bairro,m.ministerio,m.lider].join(" ").toLowerCase().includes(q))).sort(byNome);
+  const el=$("#lista");if(!el)return;
+  if(!arr.length){el.innerHTML=`<div class="panel"><p class="empty">${membros.length?"Ninguém encontrado com esses filtros.":"Nenhuma pessoa cadastrada ainda."}</p></div>`;return}
+  el.innerHTML=`<p class="sub" style="margin:0 0 8px">${arr.length} ${arr.length===1?"pessoa":"pessoas"}</p><div class="rows">${arr.map(m=>{const a=analise(m);const id_=idade(m.nascimento);return `<button class="row" data-ver="${m.id}"><span class="t">${esc(m.nome)}</span>${chip(m.grupo)}<span class="m">${id_!=null?id_+" anos · ":""}${faixa(m)}${m.cargo?" · "+esc(m.cargo):""}${m.lider?" · Líder: "+esc(m.lider):""}${m.ministerio?" · Serve em "+esc(m.ministerio):""} · Última presença: ${fmt(a.ultimaPresenca)}</span></button>`}).join("")}</div>`;
+}
+
+function dlgPessoa(id){
+  const m=membroPorId(id);if(!m)return;
+  const a=analise(m);
+  const hist=(m.historico||[]).slice().reverse();
+  const d=$("#dlg");
+  d.innerHTML=`<div class="dlg-h"><div><h2>${esc(m.nome)}</h2><div class="sub">${idade(m.nascimento)!=null?idade(m.nascimento)+" anos · ":""}${faixa(m)}</div></div><button class="btn ghost sm" data-close aria-label="Fechar">Fechar</button></div>
+  <div class="dlg-b">
+    <div><h4>Grupo de acompanhamento</h4><div class="move">${ORDEM.map(g=>`<button class="btn sm c-${g}" data-mover="${g}" aria-pressed="${m.grupo===g}" ${podeEditar?"":"disabled"}><span class="dot"></span>${GRUPOS[g].nome}</button>`).join("")}</div></div>
+    <div class="stat-row">
+      <div class="stat"><b>${a.p30}</b><span>Presenças em 30 dias</span></div>
+      <div class="stat"><b>${a.p60}</b><span>Presenças em 60 dias</span></div>
+      <div class="stat"><b>${a.seguidas}</b><span>Ausências seguidas</span></div>
+      <div class="stat"><b>${a.ultimoContato?dias(a.ultimoContato,hoje())+"d":"—"}</b><span>Desde o último contato</span></div>
+    </div>
+    <div class="info">
+      <div><span>WhatsApp</span>${m.whatsapp?`<a href="https://wa.me/55${esc(m.whatsapp.replace(/\D/g,""))}" target="_blank" rel="noopener">${esc(m.whatsapp)}</a>`:"—"}</div>
+      <div><span>Nascimento</span>${fmt(m.nascimento)}</div>
+      <div><span>E-mail</span>${esc(m.email||"—")}</div>
+      <div><span>CPF</span>${m.cpf?mascCPF(m.cpf):"—"}</div>
+      <div><span>Líder responsável</span>${esc(m.lider||"—")}</div>
+      <div><span>Cargo ministerial</span>${esc(m.cargo||"—")}</div>
+      <div><span>Serve em</span>${esc(m.ministerio||"—")}</div>
+      <div><span>Bairro</span>${esc(m.bairro||"—")}</div>
+      <div><span>Como chegou</span>${esc(m.comoChegou||"—")}</div>
+      <div><span>Primeira visita</span>${fmt(m.primeiraVisita)}</div>
+      <div><span>Última presença</span>${fmt(a.ultimaPresenca)}</div>
+      ${ehMenor(m)?`<div><span>Responsável</span>${esc(m.responsavel||"—")}${m.responsavelTel?"<br>"+esc(m.responsavelTel):""}</div><div><span>Autorização do responsável</span>${m.consentimento?"Sim":"Pendente"}</div>`:""}
+    </div>
+    ${m.obs?`<div><h4>Observações</h4><p style="margin:0;white-space:pre-wrap">${esc(m.obs)}</p></div>`:""}
+    <div><h4>Contatos de cuidado</h4>${a.pendentes.length?`<ul class="timeline">${a.pendentes.map(c=>{const at=c.prazo&&c.prazo<hoje();return `<li class="${at?"c-atraso":"c-cuidado"}"><b>${at?"Atrasado":"Pendente"} · ${esc(c.tipo)} até ${fmt(c.prazo)}</b><div class="m">Agendado por ${esc(nomeUsuario(c.autorId))}</div></li>`}).join("")}</ul>`:""}${a.contatos.length?`<ul class="timeline">${a.contatos.slice(0,10).map(c=>`<li class="c-participante"><b>${fmt(c.dataAcao)} · ${esc(c.tipo)}</b>${c.assuntosAbordados?.length?`<div class="m">Assuntos: ${esc(c.assuntosAbordados.join(", "))}</div>`:""}${c.pontosFortes?`<div style="white-space:pre-wrap">${esc(c.pontosFortes)}</div>`:""}<div class="m">Por ${esc(nomeUsuario(c.concluidoPor||c.autorId))}</div></li>`).join("")}</ul>`:(a.pendentes.length?"":`<p class="empty">Nenhum contato registrado.</p>`)}</div>
+    <div><h4>Histórico de grupo</h4>${hist.length?`<ul class="timeline">${hist.map(x=>`<li class="c-${x.para}"><b>${fmt(x.data)}</b> · ${x.de?`${esc(GRUPOS[x.de]?.curto)} para ${esc(GRUPOS[x.para]?.curto)}`:`Cadastrado em ${esc(GRUPOS[x.para]?.curto)}`}${x.motivo?`<div class="m">${esc(x.motivo)}</div>`:""}</li>`).join("")}</ul>`:`<p class="empty">Sem histórico.</p>`}</div>
+  </div>
+  ${podeEditar?`<div class="dlg-f"><button class="btn danger ghost" data-excluir="${m.id}" style="margin-right:auto">Excluir</button><button class="btn" data-editar="${m.id}">Editar</button><button class="btn pri" data-contato="${m.id}">Agendar contato</button></div>`:""}`;
+  d.dataset.id=id;d.dataset.ev="";
+  if(!d.open)d.showModal();
+}
+
+function dlgForm(id){
+  const m=id?membroPorId(id):{grupo:"conectando",primeiraVisita:hoje()};
+  const lideres=[...new Set(membros.map(x=>x.lider).filter(Boolean))].sort();
+  const mins=[...new Set(membros.map(x=>x.ministerio).filter(Boolean))].sort();
+  const d=$("#dlg");
+  d.innerHTML=`<form id="fp" method="dialog"><div class="dlg-h"><h2>${id?"Editar pessoa":"Cadastrar pessoa"}</h2><button type="button" class="btn ghost sm" data-close>Cancelar</button></div>
+  <div class="dlg-b"><div class="form">
+    <label class="full">Nome completo<input name="nome" required value="${esc(m.nome)}" autocomplete="off"></label>
+    <label>Departamento<select name="faixa" required><option value="">Escolha…</option>${depOpts(m.faixa||(id?faixa(m):""))}</select></label>
+    <label>Nascimento<input type="date" name="nascimento" value="${esc(m.nascimento)}"></label>
+    <label>WhatsApp<input name="whatsapp" inputmode="tel" value="${esc(m.whatsapp)}" placeholder="(11) 90000-0000"></label>
+    <label>CPF<input name="cpf" inputmode="numeric" value="${esc(m.cpf)}"></label>
+    <label>E-mail<input name="email" type="email" value="${esc(m.email)}"></label>
+    <label>Grupo<select name="grupo">${ORDEM.map(g=>`<option value="${g}" ${m.grupo===g?"selected":""}>${GRUPOS[g].nome}</option>`).join("")}</select></label>
+    <label>Líder responsável<input name="lider" list="dl-lid" value="${esc(m.lider)}"><datalist id="dl-lid">${lideres.map(l=>`<option value="${esc(l)}">`).join("")}</datalist></label>
+    <label>Serve em (ministério)<input name="ministerio" list="dl-min" value="${esc(m.ministerio)}" placeholder="Louvor, mídia, recepção…"><datalist id="dl-min">${mins.map(l=>`<option value="${esc(l)}">`).join("")}</datalist></label>
+    <label>Cargo ministerial<select name="cargo"><option value="">Nenhum</option>${["Membro","Discipulador(a)","Obreiro(a)","Ministro(a)","Pastor"].map(c=>`<option ${m.cargo===c?"selected":""}>${c}</option>`).join("")}</select></label>
+    <label>Bairro<input name="bairro" value="${esc(m.bairro)}"></label>
+    <label>Como chegou<select name="comoChegou"><option value=""></option>${COMO_CHEGOU.map(c=>`<option ${m.comoChegou===c?"selected":""}>${c}</option>`).join("")}</select></label>
+    <label>Primeira visita<input type="date" name="primeiraVisita" value="${esc(m.primeiraVisita)}"></label>
+    <div class="full form" id="menor" style="padding:12px;border:1px dashed var(--line);border-radius:12px">
+      <label>Nome do responsável<input name="responsavel" value="${esc(m.responsavel)}"></label>
+      <label>Telefone do responsável<input name="responsavelTel" inputmode="tel" value="${esc(m.responsavelTel)}"></label>
+      <label class="check full"><input type="checkbox" name="consentimento" ${m.consentimento?"checked":""}> O responsável autorizou o cadastro e o contato (LGPD)</label>
+    </div>
+    <label class="full">Observações <span class="hint">Use só para o necessário ao acompanhamento. Evite detalhes pessoais sensíveis.</span><textarea name="obs">${esc(m.obs)}</textarea></label>
+  </div></div>
+  <div class="dlg-f"><button class="btn pri" type="submit">${id?"Salvar alterações":"Cadastrar"}</button></div></form>`;
+  const f=$("#fp");
+  const togg=()=>{const n=f.nascimento.value;const a=n?idade(n):null;const fx=f.faixa.value;$("#menor").style.display=(fx==="Adolescente"||fx==="Criança"||(a!=null&&a<18)||(a==null&&!fx))?"":"none"};
+  f.faixa.addEventListener("change",togg);
+  f.nascimento.addEventListener("change",togg);togg();
+  f.addEventListener("submit",async ev=>{
+    ev.preventDefault();
+    const v=Object.fromEntries(["nome","faixa","cargo","nascimento","cpf","email","whatsapp","grupo","lider","ministerio","bairro","comoChegou","primeiraVisita","responsavel","responsavelTel","obs"].map(k=>[k,f[k].value.trim()]));
+    v.consentimento=f.consentimento.checked;
+    if(!v.nome){f.nome.focus();return}
+    if(!v.faixa){f.faixa.focus();return}
+    if(id){
+      const hist=(m.historico||[]).slice();
+      if(v.grupo!==m.grupo)hist.push({de:m.grupo,para:v.grupo,data:new Date().toISOString(),motivo:"Alterado na edição",por:meuId||""});
+      if(await gravar(()=>db.collection("membros").doc(id).update({...v,historico:hist}),"Alterações salvas"))dlgPessoa(id);
+    }else{
+      const ref=db.collection("membros").doc();
+      const doc={...v,criadoEm:new Date().toISOString(),criadoPor:meuId||"",historico:[{de:null,para:v.grupo,data:new Date().toISOString(),motivo:"Cadastro",por:meuId||""}]};
+      if(await gravar(()=>ref.set(doc),"Pessoa cadastrada"))d.close();
+    }
+  });
+  if(!d.open)d.showModal();
+  setTimeout(()=>f.nome.focus(),30);
+}
+
+/* ---------- chamada ---------- */
+function vChamada(){
+  const ch=st.chamada;
+  if(!ch){
+    const ult=encontros.slice().sort((a,b)=>b.data.localeCompare(a.data)).slice(0,20);
+    const abas=`<div class="seg" role="group" aria-label="Seção" style="margin-bottom:14px"><button data-chaba="encontros" aria-pressed="${st.chAba!=="eventos"}">Encontros</button><button data-chaba="eventos" aria-pressed="${st.chAba==="eventos"}">Eventos e inscrições</button></div>`;
+    if(st.chAba==="eventos")return vEventos(abas);
+    return `<div class="view-title"><div><h2>Chamada</h2><p class="sub">Marque quem esteve presente em cada encontro</p></div></div>${abas}
+    ${podeEditar?`<section class="panel"><h3>Novo encontro</h3><div class="form">
+      <label>Data<input type="date" id="chData" value="${hoje()}"></label>
+      <label>Tipo<select id="chTipo">${TIPOS_ENCONTRO.map(t=>`<option>${t}</option>`).join("")}</select></label>
+      <label>Nome (opcional)<input id="chTit" placeholder="Ex.: Célula do Centro"></label>
+      <div style="align-self:end"><button class="btn pri" data-act="iniciar" style="width:100%">Iniciar chamada</button></div>
+    </div></section>`:""}
+    <section class="panel" style="margin-top:14px"><h3>Encontros registrados</h3>${ult.length?`<ul class="list">${ult.map(e=>`<li><div class="grow"><div class="t">${fmt(e.data)} · ${esc(e.tipo)}${e.titulo?" · "+esc(e.titulo):""}</div><div class="m">${(e.presentes||[]).length} presentes</div></div>${podeEditar?`<button class="btn sm" data-abrir-enc="${e.id}">Abrir</button>`:""}</li>`).join("")}</ul>`:`<p class="empty">Nenhum encontro registrado ainda.</p>`}</section>`;
+  }
+  return `<div class="view-title"><div><h2>${fmt(ch.data)} · ${esc(ch.tipo)}</h2><p class="sub">${ch.titulo?esc(ch.titulo)+" · ":""}Toque no nome para marcar presença</p></div>${ch.id?`<button class="btn danger ghost sm" data-act="excluir-enc">Excluir encontro</button>`:""}</div>
+  <div class="toolbar"><input type="search" id="chBusca" placeholder="Buscar nome" value="${esc(st.chBusca)}" aria-label="Buscar nome"></div>
+  <div id="attList"></div>
+  <section class="panel" style="margin-top:14px"><h3>Visitante novo</h3><p class="sub" style="margin:-6px 0 10px">Entra direto em Conectando e já fica marcado como presente.</p>
+    <div class="form"><label>Nome<input id="vNome"></label><label>WhatsApp<input id="vTel" inputmode="tel"></label><label>Departamento<select id="vFaixa">${depOpts("Jovem")}</select></label><div style="align-self:end"><button class="btn" data-act="visitante" style="width:100%">Adicionar visitante</button></div></div>
+  </section>
+  <div class="sticky-save"><span class="count" id="chCount"></span><button class="btn" data-act="cancelar-ch">Cancelar</button><button class="btn pri" data-act="salvar-ch">Salvar chamada</button></div>`;
+}
+function lChamada(){
+  const ch=st.chamada,el=$("#attList");if(!ch||!el)return;
+  const q=st.chBusca.trim().toLowerCase();
+  const arr=membros.filter(m=>!q||(m.nome||"").toLowerCase().includes(q)).sort((a,b)=>ORDEM.indexOf(a.grupo)-ORDEM.indexOf(b.grupo)||byNome(a,b));
+  el.innerHTML=arr.length?`<div class="att">${arr.map(m=>{const on=ch.presentes.has(m.id);return `<button data-pres="${m.id}" aria-pressed="${on}" class="c-${m.grupo}"><span class="box">${on?"✓":""}</span><span><span class="t">${esc(m.nome)}</span><span class="m"><span class="dot" style="width:8px;height:8px"></span> ${GRUPOS[m.grupo]?.curto||""}</span></span></button>`}).join("")}</div>`:`<div class="panel"><p class="empty">${membros.length?"Ninguém encontrado.":"Cadastre pessoas para fazer a chamada, ou adicione visitantes abaixo."}</p></div>`;
+  $("#chCount").textContent=`${ch.presentes.size} ${ch.presentes.size===1?"presente":"presentes"}`;
+}
+
+/* ---------- cuidado ---------- */
+function vCuidado(){
+  const em7=new Date(dt(hoje()).getTime()+7*864e5);const prazoPadrao=em7.getFullYear()+"-"+String(em7.getMonth()+1).padStart(2,"0")+"-"+String(em7.getDate()).padStart(2,"0");
+  return `<div class="view-title"><div><h2>Cuidado</h2><p class="sub">Agende o próximo contato e registre como foi</p></div></div>
+  ${podeEditar?`<section class="panel"><h3>Agendar contato</h3><form id="fc" class="form">
+    <label class="full">Pessoa<select name="membroId" required>${opcoesMembros(st.ctMembro)}</select></label>
+    <label>Próximo contato<select name="tipo">${TIPOS_CONTATO.map(t=>`<option>${t}</option>`).join("")}</select></label>
+    <label>Até que data?<input type="date" name="prazo" value="${prazoPadrao}" min="${hoje()}" required></label>
+    <div class="full"><div class="lbl">Sugestão de assuntos <span class="hint">opcional, para ajudar na conversa</span></div>${tagsHtml("assunto",[])}</div>
+    <div class="full"><button class="btn pri" type="submit">Salvar ação</button></div>
+  </form></section>`:""}
+  <section class="panel" style="margin-top:14px"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px"><h3 style="margin:0">Acompanhamento</h3>
+    <div class="seg" role="group" aria-label="Filtro"><button data-ctf="pendentes" aria-pressed="${st.ctFiltro==="pendentes"}">Pendentes</button><button data-ctf="concluidos" aria-pressed="${st.ctFiltro==="concluidos"}">Concluídos</button><button data-ctf="todos" aria-pressed="${st.ctFiltro==="todos"}">Todos</button></div></div>
+    <div id="ctList"></div></section>`;
+}
+function opcoesMembros(sel){
+  const porGrupo=g=>membros.filter(m=>m.grupo===g).sort(byNome).map(m=>`<option value="${m.id}" ${sel===m.id?"selected":""}>${esc(m.nome)}</option>`).join("");
+  return `<option value="">Escolha…</option>`+["cuidado","ausente","conectando","participante","lider"].map(g=>`<optgroup label="${GRUPOS[g].nome}">${porGrupo(g)}</optgroup>`).join("");
+}
+function lCuidado(){
+  const el=$("#ctList");if(!el)return;
+  const h=hoje();
+  const pend=cuidados.filter(c=>c.status!=="concluido").sort((a,b)=>(a.prazo||"9").localeCompare(b.prazo||"9"));
+  const conc=cuidados.filter(c=>c.status==="concluido").sort((a,b)=>(b.dataAcao||"").localeCompare(a.dataAcao||"")).slice(0,60);
+  const arr=st.ctFiltro==="pendentes"?pend:st.ctFiltro==="concluidos"?conc:[...pend,...conc];
+  el.innerHTML=arr.length?`<ul class="list">${arr.map(c=>itemCuidado(c,h)).join("")}</ul>`:`<p class="empty">${st.ctFiltro==="pendentes"?"Nenhuma ação pendente.":st.ctFiltro==="concluidos"?"Nenhuma ação concluída ainda.":"Nenhuma ação registrada ainda."}</p>`;
+}
+function itemCuidado(c,h){
+  const m=membroPorId(c.membroId);
+  const nome=`<div class="t"><a href="#cuidado" data-ver="${c.membroId}">${esc(m?.nome||"Pessoa removida")}</a></div>`;
+  if(c.status==="concluido")return `<li style="align-items:flex-start"><span class="chip c-participante">Concluído</span><div class="grow">${nome}<div class="m">${esc(c.tipo)} em ${fmt(c.dataAcao)} · por ${esc(nomeUsuario(c.concluidoPor||c.autorId))}</div>${c.assuntosAbordados?.length?`<div class="m">Assuntos abordados: ${esc(c.assuntosAbordados.join(", "))}</div>`:""}${c.pontosFortes?`<div style="font-size:.92rem;white-space:pre-wrap"><b>Pontos fortes:</b> ${esc(c.pontosFortes)}</div>`:""}</div>${podeEditar?`<button class="btn sm ghost" data-reabrir="${c.id}">Reabrir</button>`:""}</li>`;
+  const atras=c.prazo&&c.prazo<h,abrindo=st.concluindo===c.id;
+  return `<li style="align-items:flex-start;flex-wrap:wrap"><span class="chip ${atras?"c-atraso":"c-cuidado"}">${atras?"Atrasado":"Pendente"}</span><div class="grow">${nome}<div class="m">${esc(c.tipo)} até ${fmt(c.prazo)} · agendado por ${esc(nomeUsuario(c.autorId))}</div>${c.assuntos?.length?`<div class="m">Sugestão de assuntos: ${esc(c.assuntos.join(", "))}</div>`:""}</div>${podeEditar&&!abrindo?`<button class="btn sm pri" data-concluir="${c.id}">Concluir</button>`:""}${abrindo?`<form class="form" id="fconc" data-id="${c.id}" style="flex-basis:100%;margin-top:8px;padding:12px;background:var(--surface2);border-radius:12px"><label>Data da ação<input type="date" name="dataAcao" value="${h}" max="${h}" required></label><div class="full"><div class="lbl">Assuntos abordados na conversa <span class="hint">marque pelo menos um</span></div>${tagsHtml("abordado",[])}</div><label class="full">Pontos fortes da conversa <span class="hint">Resumo curto, sem detalhes sensíveis.</span><textarea name="pontos" required></textarea></label><div class="full" style="display:flex;gap:8px;justify-content:flex-end"><button type="button" class="btn" data-cancelar-conc>Cancelar</button><button class="btn pri" type="submit">Concluir</button></div></form>`:""}</li>`;
+}
+
+/* ---------- funil por departamento ---------- */
+function vFunilAntigo(){
+  const cnt={};DEPS.forEach(d=>cnt[d.v]={p:0,c:0,v:0});
+  let tp=0,tc=0,vis=0,sem=0;
+  membros.forEach(m=>{const k=cnt[faixa(m)];
+    if(m.grupo==="conectando"){vis++;if(k)k.v++;return}
+    if(m.grupo==="participante")tp++;else if(m.grupo==="cuidado")tc++;else return;
+    if(k){if(m.grupo==="participante")k.p++;else k.c++}else sem++});
+  const n=DEPS.length;
+  const rows=DEPS.map((d,i)=>{const top=100-i*15,bot=i===n-1?0:top-15,ins=((top-bot)/2/top*100).toFixed(2),k=cnt[d.v],ult=i===n-1;
+    return `<div class="f-row" style="--fc:${d.c}"><div class="f-cell"><button class="f-seg${ult?" f-last":""}" data-dep="${d.v}" style="width:${top}%;clip-path:polygon(0 0,100% 0,${(100-ins).toFixed(2)}% 100%,${ins}% 100%)" aria-label="${d.n}: ${k.p+k.c} membros. Ver pessoas"><span>${d.n}</span><small>${k.p+k.c} ${k.p+k.c===1?"membro":"membros"}</small></button></div>
+    <div class="f-info"><span class="f-line" aria-hidden="true"></span><div class="f-box"><button data-dep="${d.v}" data-dep-grupo="participante"><b>${k.p}</b> Participantes</button><button data-dep="${d.v}" data-dep-grupo="cuidado"><b>${k.c}</b> Em cuidado</button>${k.v?`<button class="vis" data-dep="${d.v}" data-dep-grupo="conectando"><b>${k.v}</b> Visitantes</button>`:""}</div></div></div>`}).join("");
+  return `<div class="view-title"><div><h2>Funil por departamento</h2><p class="sub">Toque em um departamento para abrir a lista de pessoas</p></div></div>
+  <div class="funil">
+    <div class="f-top"><div class="f-num">${tp+tc}</div><div><b>Total de membros</b><div class="gdesc">${tp} Participantes + ${tc} Em cuidado</div></div></div>
+    <div class="f-rows">${rows}</div>
+    <div class="f-bottom"><div class="f-num" style="color:var(--conn)">${vis}</div><div><b>Visitantes</b><div class="gdesc">Conectando, em todos os departamentos</div></div><button class="btn sm" data-goto-grupo="conectando">Ver lista</button></div>
+    ${sem?`<p class="empty" style="text-align:center;margin-top:12px">${sem} ${sem===1?"membro está":"membros estão"} sem departamento definido. <a href="#pessoas" data-dep="__sem">Revisar</a></p>`:""}
+  </div>`;
+}
+
+/* ---------- funil v2 (com líderes) ---------- */
+function vFunil(){
+  const z=()=>({lider:0,participante:0,cuidado:0,ausente:0,conectando:0});
+  const cnt={};DEPS.forEach(d=>cnt[d.v]=z());const tot=z();let sem=0;
+  membros.forEach(m=>{if(tot[m.grupo]==null)return;tot[m.grupo]++;const k=cnt[faixa(m)];if(k)k[m.grupo]++;else if(MEMBRO_G.includes(m.grupo))sem++});
+  const lids=(cfg.departamentos&&cfg.departamentos.lideres)||{};
+  const n=DEPS.length;
+  const rows=DEPS.map((d,i)=>{const top=100-i*15,bot=i===n-1?0:top-15,ins=((top-bot)/2/top*100).toFixed(2),k=cnt[d.v],ult=i===n-1,mem=k.lider+k.participante+k.cuidado;
+    const ls=(lids[d.v]||[]).filter(Boolean).slice(0,4);
+    const cb=(g,label,cls,show)=>show?`<button class="${cls}" data-dep="${d.v}" data-dep-grupo="${g}"><b>${k[g]}</b> ${label}</button>`:"";
+    const lidHtml=ls.length?(podeEditar?`<button class="f-lidb" data-act="editar-lideres" data-dep-lid="${d.v}" aria-label="Editar líderes de ${d.n}"><span class="f-lt">Líderes</span>${ls.map(x=>`<span title="${esc(x)}">${esc(x)}</span>`).join("")}</button>`:`<span class="f-lt">Líderes</span>${ls.map(x=>`<span title="${esc(x)}">${esc(x)}</span>`).join("")}`):(podeEditar?`<button class="f-add" data-act="editar-lideres" data-dep-lid="${d.v}">+ Líderes</button>`:"");
+    return `<div class="f-row" style="--fc:${d.c}"><div class="f-lid">${lidHtml}</div><div class="f-cell"><button class="f-seg${ult?" f-last":""}" data-dep="${d.v}" style="width:${top}%;clip-path:polygon(0 0,100% 0,${(100-ins).toFixed(2)}% 100%,${ins}% 100%)" aria-label="${d.n}: ${mem} membros. Ver pessoas"><span>${d.n}</span><small>${mem} ${mem===1?"membro":"membros"}</small></button></div>
+    <div class="f-info"><span class="f-line" aria-hidden="true"></span><div class="f-box">${cb("participante","Participantes","",true)}${cb("cuidado","Em cuidado","",true)}${cb("lider","Líderes","",k.lider>0)}${cb("ausente","Ausentes","aus",k.ausente>0)}${cb("conectando","Visitantes","vis",k.conectando>0)}</div></div></div>`}).join("");
+  return `<div class="view-title"><div><h2>Funil por departamento</h2><p class="sub">Toque em um departamento para abrir a lista de pessoas</p></div>${podeEditar?`<button class="btn" data-act="editar-lideres">Editar líderes</button>`:""}</div>
+  <div class="funil">
+    <div class="f-top"><div class="f-num">${tot.lider+tot.participante+tot.cuidado}</div><div><b>Total de membros</b><div class="gdesc">${tot.lider} Líderes + ${tot.participante} Participantes + ${tot.cuidado} Em cuidado</div></div></div>
+    <div class="f-rows">${rows}</div>
+    <div class="f-bottom"><div class="f-num" style="color:var(--conn)">${tot.conectando}</div><div><b>Visitantes</b><div class="gdesc">Conectando, em todos os departamentos</div></div><button class="btn sm" data-goto-grupo="conectando">Ver lista</button></div>
+    <div class="f-bottom" style="margin-top:10px"><div class="f-num" style="color:var(--aus)">${tot.ausente}</div><div><b>Ausentes</b><div class="gdesc">Membros sem frequência, fora do total</div></div><button class="btn sm" data-goto-grupo="ausente">Ver lista</button></div>
+    ${sem?`<p class="empty" style="text-align:center;margin-top:12px">${sem} ${sem===1?"membro está":"membros estão"} sem departamento definido. <a href="#pessoas" data-dep="__sem">Revisar</a></p>`:""}
+  </div>`;
+}
+function dlgLideres(sel){
+  const vis=sel?DEPS.filter(x=>x.v===sel):DEPS;
+  const d=$("#dlg");d.dataset.id="";d.dataset.ev="";
+  const lids=(cfg.departamentos&&cfg.departamentos.lideres)||{};
+  const nomesL=[...new Set(membros.map(m=>m.nome))].sort((a,b)=>a.localeCompare(b,"pt-BR"));
+  d.innerHTML=`<form id="flid"><div class="dlg-h"><div><h2>${sel?"Líderes · "+esc(depInfo(sel).n):"Líderes dos departamentos"}</h2><div class="sub">Até 4 nomes${sel?"":" por departamento"}</div></div><button type="button" class="btn ghost sm" data-close>Cancelar</button></div>
+  <div class="dlg-b"><datalist id="dl-nomes">${nomesL.map(x=>`<option value="${esc(x)}">`).join("")}</datalist>${vis.map(dp=>`<fieldset style="border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:0"><legend style="font-weight:700;color:${dp.c};padding:0 6px">${dp.n}</legend><div class="form">${[0,1,2,3].map(i=>`<label>Líder ${i+1}<input name="${dp.v}_${i}" list="dl-nomes" autocomplete="off" value="${esc((lids[dp.v]||[])[i]||"")}"></label>`).join("")}</div></fieldset>`).join("")}</div>
+  <div class="dlg-f"><button class="btn pri" type="submit">Salvar líderes</button></div></form>`;
+  d.querySelector("#flid").addEventListener("submit",async ev=>{ev.preventDefault();const f=ev.target,out={...lids};
+    vis.forEach(dp=>{out[dp.v]=[0,1,2,3].map(i=>f.elements[`${dp.v}_${i}`].value.trim()).filter(Boolean)});
+    if(await gravar(()=>db.collection("config").doc("departamentos").set({lideres:out,atualizadoPor:meuId||"",atualizadoEm:new Date().toISOString()}),"Líderes salvos"))d.close()});
+  if(!d.open)d.showModal();
+}
+
+/* ---------- plano de ação ---------- */
+const STATUS_P=[["afazer","A fazer"],["andamento","Em andamento"],["concluido","Concluído"]];
+const ST_INFO={afazer:["A fazer","c-ausente"],andamento:["Em andamento","c-conectando"],concluido:["Concluído","c-participante"],atrasado:["Atrasado","c-atraso"]};
+function statusPlano(p){if(p.status==="concluido")return "concluido";if(p.prazo&&p.prazo<hoje())return "atrasado";return p.status||"afazer"}
+const depInfo=v=>DEPS.find(d=>d.v===v)||{n:v||"—",c:"var(--muted)"};
+function vPlano(){
+  const fdep=st.planoDep||"",fst=st.planoSt||"abertas";
+  const resumo=DEPS.map(d=>{const its=planos.filter(p=>p.departamento===d.v);const ab=its.filter(p=>p.status!=="concluido").length,at=its.filter(p=>statusPlano(p)==="atrasado").length,co=its.length-ab;
+    return `<button class="pl-card ${fdep===d.v?"on":""}" style="--fc:${d.c}" data-plano-dep="${fdep===d.v?"":d.v}" aria-pressed="${fdep===d.v}"><span class="pl-n">${d.n}</span><span><b>${ab}</b> abertas</span>${at?`<span class="pl-at"><b>${at}</b> atrasadas</span>`:""}<span>${co} concluídas</span></button>`}).join("");
+  let its=planos.filter(p=>!fdep||p.departamento===fdep);
+  if(fst==="abertas")its=its.filter(p=>p.status!=="concluido");else if(fst==="concluidas")its=its.filter(p=>p.status==="concluido");
+  const ord={atrasado:0,andamento:1,afazer:2,concluido:3};
+  its.sort((a,b)=>ord[statusPlano(a)]-ord[statusPlano(b)]||(a.prazo||"9").localeCompare(b.prazo||"9"));
+  const lista=its.length?`<div class="rows">${its.map(p=>{const s=statusPlano(p),inf=ST_INFO[s],dp=depInfo(p.departamento);return `<button class="row" data-ver-plano="${p.id}"><span class="t">${esc(p.acao)}</span><span class="chip ${inf[1]}"><span class="dot"></span>${inf[0]}</span><span class="m"><span class="dot" style="background:${dp.c};width:8px;height:8px"></span> ${esc(dp.n)}${p.responsavel?" · Quem: "+esc(p.responsavel):""} · Prazo: ${fmt(p.prazo)}${p.porque?" · "+esc(p.porque):""}</span></button>`}).join("")}</div>`:`<div class="panel"><p class="empty">${planos.length?"Nenhuma ação com esses filtros.":"Nenhuma ação cadastrada. Crie a primeira ação para um departamento."}</p></div>`;
+  return `<div class="view-title"><div><h2>Plano de ação</h2><p class="sub">Ações por departamento: o quê, por quê, como, quem e quando</p></div>${podeEditar?`<button class="btn pri" data-act="novo-plano">Nova ação</button>`:""}</div>
+  <div class="pl-grid">${resumo}</div>
+  <div class="toolbar" style="margin-top:14px"><div class="seg" role="group" aria-label="Situação">${[["abertas","Abertas"],["concluidas","Concluídas"],["todas","Todas"]].map(([v,t])=>`<button data-plano-st="${v}" aria-pressed="${fst===v}">${t}</button>`).join("")}</div>${fdep?`<button class="btn sm ghost" data-plano-dep="">Ver todos os departamentos</button>`:""}</div>
+  ${lista}`;
+}
+function dlgPlano(id){
+  const p=id?planos.find(x=>x.id===id):{departamento:st.planoDep||"",status:"afazer"};if(!p)return;
+  const d=$("#dlg");d.dataset.id="";d.dataset.ev="";
+  const nomesL=[...new Set(membros.map(m=>m.nome))].sort((a,b)=>a.localeCompare(b,"pt-BR"));
+  const ro=podeEditar?"":"disabled";
+  d.innerHTML=`<form id="fpl"><div class="dlg-h"><h2>${id?"Ação do plano":"Nova ação"}</h2><button type="button" class="btn ghost sm" data-close>Fechar</button></div>
+  <div class="dlg-b"><div class="form">
+    <label>Departamento<select name="departamento" required ${ro}><option value="">Escolha…</option>${depOpts(p.departamento)}</select></label>
+    <label>Situação<select name="status" ${ro}>${STATUS_P.map(([v,t])=>`<option value="${v}" ${p.status===v?"selected":""}>${t}</option>`).join("")}</select></label>
+    <label class="full">O que fazer<input name="acao" required ${ro} value="${esc(p.acao)}" placeholder="Ex.: Visitar os adolescentes em cuidado"></label>
+    <label class="full">Por quê <span class="hint">objetivo da ação</span><input name="porque" ${ro} value="${esc(p.porque)}"></label>
+    <label class="full">Como<textarea name="como" ${ro}>${esc(p.como)}</textarea></label>
+    <label>Quem<input name="responsavel" ${ro} list="dl-nomes2" autocomplete="off" value="${esc(p.responsavel)}"><datalist id="dl-nomes2">${nomesL.map(x=>`<option value="${esc(x)}">`).join("")}</datalist></label>
+    <label>Prazo<input type="date" name="prazo" required ${ro} value="${esc(p.prazo)}"></label>
+  </div></div>
+  ${podeEditar?`<div class="dlg-f">${id?`<button type="button" class="btn danger ghost" data-excluir-plano="${id}" style="margin-right:auto">Excluir</button>`:""}<button class="btn pri" type="submit">${id?"Salvar":"Criar ação"}</button></div>`:""}</form>`;
+  d.querySelector("#fpl").addEventListener("submit",async ev=>{ev.preventDefault();const f=ev.target;
+    const v={departamento:f.departamento.value,status:f.elements.status.value,acao:f.acao.value.trim(),porque:f.porque.value.trim(),como:f.como.value.trim(),responsavel:f.responsavel.value.trim(),prazo:f.prazo.value};
+    if(!v.departamento||!v.acao||!v.prazo)return;
+    if(v.status==="concluido"&&p.status!=="concluido")v.concluidoEm=new Date().toISOString();
+    const ok=id?await gravar(()=>db.collection("planos").doc(id).update(v),"Ação atualizada"):await gravar(()=>db.collection("planos").doc().set({...v,criadoEm:new Date().toISOString(),criadoPor:meuId||""}),"Ação criada");
+    if(ok)d.close()});
+  if(!d.open)d.showModal();
+}
+
+/* ---------- link de cadastro ---------- */
+async function dlgLinkCadastro(){
+  const d=$("#dlg");d.dataset.id="";d.dataset.ev="";
+  let link="";try{const s=await db.collection("config").doc("geral").get();link=(s.exists&&s.data()?.linkCadastro)||""}catch(_){}
+  const msg=link?`Olá! Que bom ter você com a gente. Faça seu cadastro por este link, leva menos de 2 minutos: ${link}`:"";
+  const q=(t,tipo)=>`<li><b>${t}</b>${tipo?` <span class="hint">${tipo}</span>`:""}</li>`;
+  d.innerHTML=`<div class="dlg-h"><div><h2>Link de cadastro</h2><div class="sub">Para novos membros e visitantes preencherem</div></div><button class="btn ghost sm" data-close>Fechar</button></div>
+  <div class="dlg-b">
+    <div><h4>Link do formulário</h4><div class="form"><label class="full">Link do Google Forms<input id="lkCad" type="url" placeholder="https://forms.gle/…" value="${esc(link)}" ${podeEditar?"":"readonly"}></label></div>${podeEditar?`<div style="display:flex;justify-content:flex-end;margin-top:8px"><button class="btn sm" data-act="salvar-link">Salvar link</button></div>`:""}</div>
+    ${link?`<div><h4>Enviar</h4><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" data-copiar="${esc(link)}">Copiar link</button><button class="btn sm" data-copiar="${esc(msg)}">Copiar mensagem</button><a class="btn sm pri" style="text-decoration:none" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(msg)}">Enviar no WhatsApp</a></div></div>`:""}
+    <div><h4>Como montar o formulário</h4><p class="sub" style="margin:0 0 6px">Crie as perguntas com estes títulos exatos, para o app reconhecer as respostas:</p>
+      <ol style="margin:0;padding-left:20px;font-size:.92rem;display:grid;gap:2px">
+        ${q("Nome completo","resposta curta, obrigatória")}${q("Você é","múltipla escolha: Membro ou Visitante, obrigatória")}${q("Departamento","múltipla escolha: Homens, Mulheres, Jovens, Adolescentes, Crianças, obrigatória")}${q("Data de nascimento","tipo Data")}${q("CPF","")}${q("WhatsApp","")}${q("E-mail","")}${q("Bairro","")}${q("Como chegou","múltipla escolha: Convite de amigo, Família, Redes sociais, Evento, Outro")}${q("Nome do responsável","para menores de 18")}${q("Telefone do responsável","para menores de 18")}${q("Autorização do responsável","Sim ou Não: autoriza o cadastro e o contato (LGPD)")}
+      </ol>
+      <p class="hint" style="margin:8px 0 0">Quem responder Membro entra em Participantes; Visitante entra em Conectando. A data da resposta vira a data da primeira visita. O líder pode mudar o grupo depois.</p></div>
+    <div><h4>Trazer as respostas para o app</h4><p class="sub" style="margin:0 0 8px">No formulário, vá em Respostas e clique em Vincular ao Planilhas. Na planilha, use Arquivo, Fazer download, Microsoft Excel (.xlsx), e importe o arquivo. Quem já estiver cadastrado é ignorado.</p>${podeEditar?`<button class="btn" data-act="importar">Importar respostas</button>`:""}</div>
+  </div>`;
+  if(!d.open)d.showModal();
+}
+
+/* ---------- importar planilha ---------- */
+let importPrev=null;
+const COLMAP=[["nome completo","nome"],["cargo","cargo"],["departamento","faixa"],["grupo","grupo"],["voce e","grupo"],["carimbo","carimbo"],["data de nascimento","nascimento"],["nascimento","nascimento"],["cpf","cpf"],["whatsapp","whatsapp"],["telefone do responsavel","responsavelTel"],["nome do responsavel","responsavel"],["autorizacao","consentimento"],["email","email"],["lider","lider"],["serve em","ministerio"],["ministerio","ministerio"],["bairro","bairro"],["como chegou","comoChegou"],["primeira visita","primeiraVisita"],["observacoes","obs"]];
+function depDe(s){const n=norm(s);if(!n)return "";if(n.startsWith("homem")||n.startsWith("homens"))return "Homens";if(n.startsWith("mulher"))return "Mulheres";if(n.startsWith("jove"))return "Jovem";if(n.startsWith("adolesc"))return "Adolescente";if(n.startsWith("crian"))return "Criança";return null}
+function grupoDe(s){const n=norm(s);if(n.startsWith("lider"))return "lider";if(n.startsWith("ausent"))return "ausente";if(n.startsWith("particip"))return "participante";if(n.includes("cuidado"))return "cuidado";if(n.startsWith("conect")||n.startsWith("visit"))return "conectando";if(n.startsWith("membro"))return "participante";return null}
+function dlgImportar(){
+  importPrev=null;const d=$("#dlg");d.dataset.id="";d.dataset.ev="";
+  d.innerHTML=`<div class="dlg-h"><div><h2>Importar cadastros</h2><div class="sub">Suba vários cadastros de uma vez pela planilha modelo</div></div><button class="btn ghost sm" data-close>Fechar</button></div>
+  <div class="dlg-b">
+    <div><h4>1. Baixe e preencha o modelo</h4><p class="sub" style="margin:0 0 8px">Uma pessoa por linha. Departamento, Grupo e Como chegou têm lista de opções.</p>${downloads?`<button class="btn" data-act="baixar-modelo">Baixar planilha modelo</button>`:`<p class="empty">Peça a planilha modelo ao responsável pelo app.</p>`}</div>
+    <div><h4>2. Escolha o arquivo preenchido</h4><label class="btn pri">Escolher planilha<input type="file" id="fImport" accept=".xlsx,.xls,.csv" hidden></label></div>
+    <div id="impPrev"></div>
+  </div>`;
+  d.querySelector("#fImport").addEventListener("change",ev=>lerPlanilha(ev.target.files[0]));
+  if(!d.open)d.showModal();
+}
+async function baixarModelo(){
+  try{const r=await fetch("modelo-cadastro-membros.xlsx");if(!r.ok)throw new Error("fetch");const u=new Uint8Array(await r.arrayBuffer());
+    await downloads.save({filename:"modelo-cadastro-membros.xlsx",data:new Blob([u],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"})})}
+  catch(e){if(!e||e.code!=="declined")toast("Não foi possível baixar o modelo.")}
+}
+async function lerPlanilha(file){
+  const box=$("#impPrev");if(!file||!box)return;
+  if(!window.XLSX){box.innerHTML=`<p class="empty">Não foi possível carregar o leitor de planilhas. Recarregue a página.</p>`;return}
+  box.innerHTML=`<p class="empty">Lendo a planilha…</p>`;
+  let rows;
+  try{const wb=XLSX.read(await file.arrayBuffer(),{type:"array",codepage:65001});const nm=wb.SheetNames.includes("Cadastros")?"Cadastros":(wb.SheetNames.find(n=>n!=="Instruções"&&n!=="Listas")||wb.SheetNames[0]);rows=XLSX.utils.sheet_to_json(wb.Sheets[nm],{raw:false,defval:"",dateNF:"dd/mm/yyyy"})}
+  catch(e){box.innerHTML=`<p class="empty">Não foi possível ler o arquivo. Use a planilha modelo em .xlsx.</p>`;return}
+  const ok=[],dup=[],err=[];
+  rows.forEach((row,ix)=>{
+    const linha=ix+2,v={};
+    Object.keys(row).forEach(h=>{const n=norm(h);const k=COLMAP.find(([p])=>n.startsWith(p));if(k&&v[k[1]]===undefined)v[k[1]]=String(row[h]??"").trim()});
+    const nome=v.nome||"";
+    if(!Object.values(v).some(x=>x))return;
+    if(norm(nome).startsWith("exemplo"))return;
+    const probs=[];
+    if(!nome)probs.push("nome vazio");
+    const fx=depDe(v.faixa);if(fx===null)probs.push(`departamento “${v.faixa}” inválido`);else if(!fx)probs.push("departamento vazio");
+    const gr=grupoDe(v.grupo);if(!gr)probs.push(v.grupo?`grupo “${v.grupo}” inválido`:"grupo vazio");
+    const nasc=v.nascimento?dataISO(v.nascimento):"";if(v.nascimento&&!nasc)probs.push("data de nascimento inválida");
+    let pv=v.primeiraVisita?dataISO(v.primeiraVisita):"";if(v.primeiraVisita&&!pv)probs.push("primeira visita inválida");if(!pv&&v.carimbo)pv=dataISO(v.carimbo);
+    const cpf=soDig(v.cpf);if(cpf&&cpf.length!==11)probs.push("CPF sem 11 números");
+    if(probs.length){err.push({linha,nome:nome||"(sem nome)",motivo:probs.join(", ")});return}
+    const p={nome,faixa:fx,grupo:gr,nascimento:nasc,cpf,whatsapp:v.whatsapp||"",email:(v.email||"").toLowerCase(),lider:v.lider||"",ministerio:v.ministerio||"",bairro:v.bairro||"",comoChegou:v.comoChegou||"",primeiraVisita:pv,responsavel:v.responsavel||"",responsavelTel:v.responsavelTel||"",consentimento:norm(v.consentimento).startsWith("sim"),obs:v.obs||"",cargo:v.cargo||""};
+    if(acharMembro(p)||ok.some(q=>(p.cpf&&q.cpf===p.cpf)||(norm(q.nome)===norm(p.nome)&&q.nascimento===p.nascimento))){dup.push({linha,nome});return}
+    ok.push(p)});
+  importPrev=ok;
+  box.innerHTML=`<div class="stat-row"><div class="stat"><b>${ok.length}</b><span>Prontos para cadastrar</span></div><div class="stat"><b>${dup.length}</b><span>Já cadastrados (ignorados)</span></div><div class="stat ${err.length?"alerta":""}"><b>${err.length}</b><span>Com erro</span></div></div>
+  ${err.length?`<h4 style="margin-top:14px">Corrija estas linhas e suba de novo</h4><ul class="list">${err.map(x=>`<li><div class="grow"><div class="t">Linha ${x.linha} · ${esc(x.nome)}</div><div class="m">${esc(x.motivo)}</div></div></li>`).join("")}</ul>`:""}
+  ${dup.length?`<details style="margin-top:8px"><summary class="m" style="cursor:pointer">Ver quem já está cadastrado</summary><p class="m">${dup.map(x=>`Linha ${x.linha}: ${esc(x.nome)}`).join("<br>")}</p></details>`:""}
+  ${ok.length?`<div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn pri" data-act="confirmar-import">Cadastrar ${ok.length} ${ok.length===1?"pessoa":"pessoas"}</button></div>`:`<p class="empty" style="margin-top:10px">Nenhum cadastro novo para importar.</p>`}`;
+}
+async function confirmarImport(btn){
+  if(!importPrev||!importPrev.length)return;
+  if(!podeEditar){toast("Seu acesso é só de leitura.");return}
+  btn.disabled=true;const tot=importPrev.length,agora=new Date().toISOString();let n=0;
+  for(let i=0;i<tot;i+=20){
+    const parte=importPrev.slice(i,i+20);
+    try{await Promise.all(parte.map(p=>db.collection("membros").doc().set({...p,criadoEm:agora,criadoPor:meuId||"",historico:[{de:null,para:p.grupo,data:agora,motivo:"Importação de planilha",por:meuId||""}]})))}
+    catch(e){console.error(e);importPrev=null;btn.textContent="Importação interrompida";toast(`Parou após ${n} de ${tot}. Suba a planilha de novo: quem já entrou será ignorado.`);return}
+    n+=parte.length;btn.textContent=`Cadastrando… ${n} de ${tot}`;
+  }
+  importPrev=null;$("#dlg").close();toast(`${n} ${n===1?"pessoa cadastrada":"pessoas cadastradas"}`);
+}
+
+/* ---------- eventos e inscrições ---------- */
+const NL=String.fromCharCode(10);
+const soDig=s=>String(s||"").replace(/[^0-9]/g,"");
+const norm=s=>String(s||"").normalize("NFD").replace(/[^a-zA-Z0-9 ]/g,"").toLowerCase().replace(/ +/g," ").trim();
+const mascCPF=c=>{const d=soDig(c);return d.length===11?`***.***.${d.slice(6,9)}-${d.slice(9)}`:esc(c)};
+const brl=v=>Number(v||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+function parseValor(s){s=String(s||"").trim().replace(/[^0-9.,]/g,"");if(s.includes(","))s=s.replace(/[.]/g,"").replace(",",".");const n=Number(s);return isFinite(n)?Math.round(n*100)/100:0}
+function dataISO(s){s=String(s||"").trim();let m=s.match(/^([0-9]{1,2})[/]([0-9]{1,2})[/]([0-9]{4})/);if(m)return `${m[3]}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}`;m=s.match(/^[0-9]{4}-[0-9]{2}-[0-9]{2}/);return m?m[0]:""}
+const evAtual=()=>eventos.find(x=>x.id===$("#dlg").dataset.ev);
+function acharMembro(i){return membros.find(m=>(i.cpf&&soDig(m.cpf)===i.cpf)||(norm(m.nome)===norm(i.nome)&&(!i.nascimento||!m.nascimento||m.nascimento===i.nascimento)))}
+async function copiar(t){try{await navigator.clipboard.writeText(t);toast("Copiado")}catch(_){const ta=document.createElement("textarea");ta.value=t;ta.style.position="fixed";ta.style.opacity="0";($("#dlg").open?$("#dlg"):document.body).appendChild(ta);ta.select();try{document.execCommand("copy");toast("Copiado")}catch(e){toast("Não foi possível copiar.")}ta.remove()}}
+
+/* PIX copia e cola (BR Code estático) */
+const tlv=(id,v)=>id+String(v.length).padStart(2,"0")+v;
+function crc16(s){let c=0xFFFF;for(let i=0;i<s.length;i++){c^=s.charCodeAt(i)<<8;for(let j=0;j<8;j++)c=(c&0x8000)?((c<<1)^0x1021)&0xFFFF:(c<<1)&0xFFFF}return c.toString(16).toUpperCase().padStart(4,"0")}
+const ascii=s=>String(s||"").normalize("NFD").replace(/[^A-Za-z0-9 .-]/g,"").toUpperCase().trim();
+function chavePix(e){let k=String(e.pixChave||"").trim();if(e.pixTipo==="CPF/CNPJ")return soDig(k);if(e.pixTipo==="Celular"){k=soDig(k);if(k.length<=11)k="55"+k;return "+"+k}if(e.pixTipo==="E-mail")return k.toLowerCase();return k}
+function pixPayload(e){
+  const p=tlv("00","01")+tlv("26",tlv("00","br.gov.bcb.pix")+tlv("01",chavePix(e)))+tlv("52","0000")+tlv("53","986")+(e.valor>0?tlv("54",Number(e.valor).toFixed(2)):"")+tlv("58","BR")+tlv("59",ascii(e.pixNome).slice(0,25)||"RECEBEDOR")+tlv("60",ascii(e.pixCidade).slice(0,15)||"SAO PAULO")+tlv("62",tlv("05","***"))+"6304";
+  return p+crc16(p);
+}
+function convite(e){
+  const l=[`*${e.nome}*`,`📅 ${fmt(e.data)}${e.local?" · "+e.local:""}`,e.cobranca==="investimento"?`💰 Investimento: ${brl(e.valor)}`:"✅ Gratuito"];
+  if(e.linkInscricao)l.push("",`📝 Faça sua inscrição: ${e.linkInscricao}`);
+  if(e.cobranca==="investimento"){if(e.pagModo==="link"&&e.linkPagamento)l.push("",`💳 Pagamento: ${e.linkPagamento}`);else if(e.pixChave)l.push("",`💳 PIX (${e.pixTipo}): ${e.pixChave}`,`Recebedor: ${e.pixNome}`,"","PIX copia e cola:",pixPayload(e))}
+  return l.join(NL);
+}
+function vEventos(abas){
+  const evs=eventos.slice().sort((a,b)=>(b.data||"").localeCompare(a.data||""));
+  return `<div class="view-title"><div><h2>Chamada</h2><p class="sub">Eventos com link de inscrição e pagamento</p></div>${podeEditar?`<button class="btn pri" data-act="novo-evento">Criar evento</button>`:""}</div>${abas}
+  ${evs.length?`<div class="rows">${evs.map(e=>{const n=(e.inscritos||[]).length,pg=(e.inscritos||[]).filter(i=>i.pago).length,inv=e.cobranca==="investimento";return `<button class="row" data-ver-evento="${e.id}"><span class="t">${esc(e.nome)}</span><span class="chip ${inv?"c-cuidado":"c-participante"}">${inv?brl(e.valor):"Gratuito"}</span><span class="m">${fmt(e.data)}${e.local?" · "+esc(e.local):""} · ${n} ${n===1?"inscrito":"inscritos"}${inv?` · ${pg} pagos`:""}</span></button>`}).join("")}</div>`:`<div class="panel"><h3>Nenhum evento criado</h3><p class="empty">Crie um evento para gerar o convite com o link de inscrição e, se houver investimento, o PIX ou o link de pagamento.</p></div>`}`;
+}
+function dlgEventoForm(id){
+  const e=id?eventos.find(x=>x.id===id):{cobranca:"gratuito",pagModo:"pix",pixTipo:"Celular",data:hoje()};if(!e)return;
+  const d=$("#dlg");d.dataset.id="";d.dataset.ev="";
+  const radio=(name,val,txt,on)=>`<label class="segr"><input type="radio" name="${name}" value="${val}" ${on?"checked":""}><span>${txt}</span></label>`;
+  d.innerHTML=`<form id="fe"><div class="dlg-h"><h2>${id?"Editar evento":"Criar evento"}</h2><button type="button" class="btn ghost sm" data-close>Cancelar</button></div>
+  <div class="dlg-b"><div class="form">
+    <label class="full">Nome do evento<input name="nome" required value="${esc(e.nome)}"></label>
+    <label>Data<input type="date" name="data" required value="${esc(e.data)}"></label>
+    <label>Local<input name="local" value="${esc(e.local)}"></label>
+    <div class="full"><div class="lbl">Cobrança</div><div class="seg" role="radiogroup">${radio("cobranca","gratuito","Gratuito",e.cobranca!=="investimento")}${radio("cobranca","investimento","Com investimento",e.cobranca==="investimento")}</div></div>
+    <div class="full form" id="invBox" style="padding:12px;border:1px dashed var(--line);border-radius:12px">
+      <label>Valor (R$)<input name="valor" inputmode="decimal" placeholder="0,00" value="${e.valor?String(e.valor.toFixed(2)).replace(".",","):""}"></label>
+      <div class="full"><div class="lbl">Forma de pagamento</div><div class="seg" role="radiogroup">${radio("pagModo","pix","Chave PIX",e.pagModo!=="link")}${radio("pagModo","link","Link de pagamento",e.pagModo==="link")}</div></div>
+      <div class="full form" id="pixBox">
+        <label>Tipo da chave<select name="pixTipo">${["Celular","CPF/CNPJ","E-mail","Aleatória"].map(t=>`<option ${e.pixTipo===t?"selected":""}>${t}</option>`).join("")}</select></label>
+        <label>Chave PIX<input name="pixChave" value="${esc(e.pixChave)}"></label>
+        <label>Nome do recebedor<input name="pixNome" value="${esc(e.pixNome)}" placeholder="Como aparece no banco"></label>
+        <label>Cidade do recebedor<input name="pixCidade" value="${esc(e.pixCidade||"Sao Paulo")}"></label>
+        <p class="hint full" style="margin:0">O app gera o QR Code e o PIX copia e cola já com o valor do evento.</p>
+      </div>
+      <label class="full" id="linkBox">Link de pagamento<input name="linkPagamento" type="url" value="${esc(e.linkPagamento)}" placeholder="https://"><span class="hint">Crie o link no app do banco ou em Mercado Pago, PagBank ou InfinitePay e cole aqui.</span></label>
+    </div>
+    <label class="full">Link de inscrição (formulário)<input name="linkInscricao" type="url" value="${esc(e.linkInscricao)}" placeholder="https://forms.gle/…"><span class="hint">Cole o link do Google Forms ou Microsoft Forms. <a href="#" data-act="guia-form">Como montar o formulário</a></span></label>
+    <div id="guia" class="notice full" hidden>No Google Forms, crie estas perguntas: <b>Nome completo</b> (resposta curta, obrigatória), <b>Data de nascimento</b> (tipo Data), <b>CPF</b>, <b>Telefone (WhatsApp)</b> e <b>E-mail</b>. Para adolescentes, inclua também o nome e o telefone do responsável e uma caixa de autorização de participação e uso dos dados. Quando as inscrições chegarem, vá em Respostas, use o menu de três pontos, “Fazer o download das respostas (.csv)”, e importe o arquivo aqui no evento.</div>
+  </div></div>
+  <div class="dlg-f"><button class="btn pri" type="submit">${id?"Salvar alterações":"Criar evento"}</button></div></form>`;
+  const f=$("#fe");
+  const sync=()=>{const inv=f.cobranca.value==="investimento",pix=f.pagModo.value!=="link";$("#invBox").style.display=inv?"":"none";$("#pixBox").style.display=pix?"":"none";$("#linkBox").style.display=pix?"none":""};
+  f.addEventListener("change",sync);sync();
+  f.addEventListener("submit",async ev=>{ev.preventDefault();
+    const v={nome:f.nome.value.trim(),data:f.data.value,local:f.local.value.trim(),cobranca:f.cobranca.value,valor:parseValor(f.valor.value),pagModo:f.pagModo.value,pixTipo:f.pixTipo.value,pixChave:f.pixChave.value.trim(),pixNome:f.pixNome.value.trim(),pixCidade:f.pixCidade.value.trim(),linkPagamento:f.linkPagamento.value.trim(),linkInscricao:f.linkInscricao.value.trim()};
+    if(v.cobranca==="investimento"){
+      if(!(v.valor>0)){toast("Informe o valor do investimento.");f.valor.focus();return}
+      if(v.pagModo==="pix"&&(!v.pixChave||!v.pixNome)){toast("Informe a chave PIX e o nome do recebedor.");(v.pixChave?f.pixNome:f.pixChave).focus();return}
+      if(v.pagModo==="link"&&!v.linkPagamento){toast("Cole o link de pagamento.");f.linkPagamento.focus();return}
+    }
+    if(id){if(await gravar(()=>db.collection("eventos").doc(id).update(v),"Evento atualizado"))dlgEvento(id)}
+    else{const ref=db.collection("eventos").doc();if(await gravar(()=>ref.set({...v,inscritos:[],criadoEm:new Date().toISOString(),criadoPor:meuId||""}),"Evento criado"))dlgEvento(ref.id)}
+  });
+  if(!d.open)d.showModal();
+  setTimeout(()=>f.nome.focus(),30);
+}
+function dlgEvento(id){
+  const d=$("#dlg");d.dataset.id="";d.dataset.ev=id;
+  const e=eventos.find(x=>x.id===id);
+  if(!e){d.innerHTML=`<div class="dlg-h"><h2>Carregando…</h2><button class="btn ghost sm" data-close>Fechar</button></div>`;if(!d.open)d.showModal();return}
+  const ins=e.inscritos||[],inv=e.cobranca==="investimento";
+  const pix=inv&&e.pagModo!=="link"&&e.pixChave?pixPayload(e):"";
+  const pagHtml=pix?`<div class="pix"><div id="qr" role="img" aria-label="QR Code PIX"></div><div style="min-width:0;flex:1"><div class="m">PIX copia e cola · ${brl(e.valor)}</div><code class="cc">${esc(pix)}</code><button class="btn sm" data-copiar="${esc(pix)}">Copiar código PIX</button><div class="m" style="margin-top:6px">Chave ${esc(e.pixTipo)}: ${esc(e.pixChave)} · ${esc(e.pixNome)}</div></div></div>`:e.linkPagamento?`<p style="margin:0;word-break:break-all"><a href="${esc(e.linkPagamento)}" target="_blank" rel="noopener">${esc(e.linkPagamento)}</a></p><button class="btn sm" data-copiar="${esc(e.linkPagamento)}" style="margin-top:6px">Copiar link de pagamento</button>`:`<p class="empty">Forma de pagamento não configurada.</p>`;
+  const lista=ins.length?`<ul class="list">${ins.map((i,ix)=>{const m=i.membroId?membroPorId(i.membroId):null;return `<li style="flex-wrap:wrap"><div class="grow"><div class="t">${esc(i.nome)}</div><div class="m">${i.nascimento?fmt(i.nascimento)+" · ":""}${esc(i.whatsapp||"")}${i.email?" · "+esc(i.email):""}${i.cpf?" · CPF "+mascCPF(i.cpf):""}</div><div class="m">${m?chip(m.grupo)+" já cadastrado":"Ainda não cadastrado"}</div></div>${podeEditar&&!m?`<button class="btn sm" data-cad-ins="${ix}">Cadastrar</button>`:""}${inv?(podeEditar?`<button class="btn sm ${i.pago?"":"pri"}" data-pago="${ix}">${i.pago?"Pago ✓":"Marcar pago"}</button>`:`<span class="chip ${i.pago?"c-participante":"c-cuidado"}">${i.pago?"Pago":"Pendente"}</span>`):""}${podeEditar?`<button class="btn sm ghost danger" data-rm-ins="${ix}" aria-label="Remover ${esc(i.nome)}">✕</button>`:""}</li>`}).join("")}</ul>${podeEditar&&ins.some(i=>!(i.membroId&&membroPorId(i.membroId)))?`<button class="btn sm" data-act="cad-todos" style="margin-top:8px">Cadastrar todos os novos em Conectando</button>`:""}`:`<p class="empty">Nenhum inscrito ainda. Quando as pessoas preencherem o formulário, baixe as respostas em CSV e importe aqui.</p>`;
+  d.innerHTML=`<div class="dlg-h"><div><h2>${esc(e.nome)}</h2><div class="sub">${fmt(e.data)}${e.local?" · "+esc(e.local):""} · ${inv?brl(e.valor):"Gratuito"}</div></div><button class="btn ghost sm" data-close>Fechar</button></div>
+  <div class="dlg-b">
+    <div><h4>Convite</h4><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">${e.linkInscricao?`<button class="btn sm" data-copiar="${esc(e.linkInscricao)}">Copiar link de inscrição</button>`:`<span class="empty">Sem link de inscrição.${podeEditar?` <a href="#" data-editar-evento="${e.id}">Adicionar</a>`:""}</span>`}<button class="btn sm" data-act="copiar-convite">Copiar mensagem</button><a class="btn sm pri" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(convite(e))}" style="text-decoration:none">Enviar no WhatsApp</a></div></div>
+    ${inv?`<div><h4>Pagamento</h4>${pagHtml}</div>`:""}
+    <div><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px"><h4 style="margin:0">Inscritos (${ins.length})${inv?` · ${ins.filter(i=>i.pago).length} pagos`:""}</h4>${podeEditar?`<div style="display:flex;gap:6px;flex-wrap:wrap"><label class="btn sm">Importar respostas (CSV)<input type="file" accept=".csv,text/csv" id="csvIns" hidden></label><button class="btn sm" data-act="add-inscrito">Adicionar</button></div>`:""}</div>
+    <div id="insForm"></div>${lista}</div>
+  </div>
+  ${podeEditar?`<div class="dlg-f"><button class="btn danger ghost" data-excluir-evento="${e.id}" style="margin-right:auto">Excluir</button><button class="btn" data-editar-evento="${e.id}">Editar</button><button class="btn pri" data-chamada-evento="${e.id}">Fazer chamada</button></div>`:""}`;
+  if(pix&&window.QRCode){try{new QRCode(d.querySelector("#qr"),{text:pix,width:168,height:168,correctLevel:QRCode.CorrectLevel.M})}catch(_){}}
+  const fi=d.querySelector("#csvIns");if(fi)fi.addEventListener("change",()=>importarCSV(e,fi.files[0]));
+  if(!d.open)d.showModal();
+}
+function importarCSV(e,file){
+  if(!file)return;
+  if(!window.Papa){toast("Não foi possível ler o arquivo agora. Recarregue a página.");return}
+  Papa.parse(file,{header:true,skipEmptyLines:true,complete:async r=>{
+    const hs=r.meta.fields||[];
+    const acha=(...ks)=>hs.find(h=>{const n=norm(h);return ks.some(k=>n.includes(k))});
+    const cNome=acha("nome completo","nome"),cNasc=acha("nascimento","nasc"),cCpf=acha("cpf"),cTel=acha("whatsapp","telefone","celular","fone"),cEmail=acha("email");
+    if(!cNome){toast("Não encontrei a coluna de nome no arquivo.");return}
+    const ins=(e.inscritos||[]).slice();let novos=0;
+    r.data.forEach(row=>{const nome=String(row[cNome]||"").trim();if(!nome)return;
+      const i={nome,nascimento:dataISO(cNasc?row[cNasc]:""),cpf:soDig(cCpf?row[cCpf]:""),whatsapp:String(cTel?row[cTel]||"":"").trim(),email:String(cEmail?row[cEmail]||"":"").trim().toLowerCase(),pago:false};
+      if(ins.find(x=>(i.cpf&&x.cpf===i.cpf)||(i.email&&x.email===i.email)||norm(x.nome)===norm(i.nome)))return;
+      const m=acharMembro(i);if(m)i.membroId=m.id;ins.push(i);novos++});
+    if(!novos){toast("Nenhuma inscrição nova no arquivo.");return}
+    await gravar(()=>db.collection("eventos").doc(e.id).update({inscritos:ins}),`${novos} ${novos===1?"inscrição importada":"inscrições importadas"}`);
+  },error:()=>toast("Não foi possível ler o arquivo CSV.")});
+}
+async function cadastrarInscritos(e,idxs){
+  if(!podeEditar)return;
+  const ins=(e.inscritos||[]).slice();let n=0;
+  for(const ix of idxs){const i=ins[ix];if(!i||(i.membroId&&membroPorId(i.membroId)))continue;
+    const ex=acharMembro(i);if(ex){ins[ix]={...i,membroId:ex.id};continue}
+    const a=idade(i.nascimento),ref=db.collection("membros").doc(),agora=new Date().toISOString();
+    const doc={nome:i.nome,nascimento:i.nascimento||"",cpf:i.cpf||"",whatsapp:i.whatsapp||"",email:i.email||"",faixa:a==null?"":(a<12?"Criança":a<18?"Adolescente":a<=29?"Jovem":""),grupo:"conectando",primeiraVisita:e.data||hoje(),comoChegou:"Evento",criadoEm:agora,criadoPor:meuId||"",historico:[{de:null,para:"conectando",data:agora,motivo:"Inscrição no evento "+e.nome,por:meuId||""}]};
+    if(!await gravar(()=>ref.set(doc)))break;ins[ix]={...i,membroId:ref.id};n++}
+  await gravar(()=>db.collection("eventos").doc(e.id).update({inscritos:ins}),n?`${n} ${n===1?"pessoa cadastrada":"pessoas cadastradas"} em Conectando`:"Inscritos vinculados ao cadastro");
+}
+
+/* ---------- administração: acessos e backup ---------- */
+const COLS=["membros","encontros","cuidados","eventos","planos","config"];
+async function dlgAdmin(){
+  if(!ehAdmin)return;
+  const d=$("#dlg");d.dataset.id="";d.dataset.ev="";
+  d.innerHTML=`<div class="dlg-h"><div><h2>Administração</h2><div class="sub">Acessos e backup</div></div><button class="btn ghost sm" data-close>Fechar</button></div>
+  <div class="dlg-b">
+    <div><h4>Quem pode acessar</h4><div id="acList"><p class="empty">Carregando…</p></div>
+      <form id="fac" class="form" style="margin-top:10px"><label>E-mail Google<input name="email" type="email" required placeholder="nome@gmail.com" autocomplete="off"></label><label>Nome<input name="nome" autocomplete="off"></label><label>Perfil<select name="papel"><option value="lider">Líder</option><option value="admin">Administrador</option></select></label><div style="align-self:end"><button class="btn pri" type="submit" style="width:100%">Liberar acesso</button></div></form>
+      <p class="hint" style="margin:8px 0 0">Líder: vê e edita os dados. Administrador: também libera acessos e faz backup.</p></div>
+    <div><h4>Backup</h4><p class="sub" style="margin:0 0 8px">Baixe uma cópia completa dos dados toda semana e guarde no seu Google Drive.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-act="backup-json">Baixar backup (JSON)</button><button class="btn" data-act="backup-xlsx">Baixar planilha (Excel)</button></div></div>
+    <div><h4>Restaurar backup</h4><p class="sub" style="margin:0 0 8px">Importa um arquivo de backup (.json). Registros com o mesmo ID são substituídos pela versão do arquivo.</p><label class="btn">Escolher arquivo de backup<input type="file" id="fRest" accept=".json,application/json" hidden></label><div id="restInfo" style="margin-top:8px"></div></div>
+  </div>`;
+  d.querySelector("#fac").addEventListener("submit",async ev=>{ev.preventDefault();const f=ev.target;const em=f.email.value.trim().toLowerCase();
+    if(!/^[^@ ]+@[^@ ]+[.][^@ ]+$/.test(em)){toast("E-mail inválido.");return}
+    if(await gravar(()=>db.collection("acessos").doc(em).set({email:em,nome:f.nome.value.trim(),papel:f.papel.value,liberadoPor:meuEmail,liberadoEm:new Date().toISOString()}),"Acesso liberado")){f.reset();carregarAcessos()}});
+  d.querySelector("#fRest").addEventListener("change",ev=>restaurar(ev.target.files[0]));
+  if(!d.open)d.showModal();
+  carregarAcessos();
+}
+async function carregarAcessos(){
+  const el=$("#acList");if(!el)return;
+  try{const x=await db.collection("acessos").get();const ac=x.docs.map(y=>({id:y.id,...y.data()})).filter(a=>a.id!==DONO).sort((a,b)=>(a.nome||a.id).localeCompare(b.nome||b.id,"pt-BR"));
+    el.innerHTML=`<ul class="list"><li><div class="grow"><div class="t">${esc(DONO)}</div><div class="m">Dono do app · Administrador</div></div></li>${ac.map(a=>`<li><div class="grow"><div class="t">${esc(a.nome||a.id)}</div><div class="m">${esc(a.id)} · ${a.papel==="admin"?"Administrador":"Líder"}</div></div><button class="btn sm ghost danger" data-rm-acesso="${esc(a.id)}">Remover</button></li>`).join("")}</ul>${ac.length?"":`<p class="empty">Nenhum líder liberado ainda.</p>`}`}
+  catch(e){console.error(e);el.innerHTML=`<p class="empty">Não foi possível carregar os acessos.</p>`}
+}
+async function lerTudo(){const out={};for(const c of COLS){const x=await db.collection(c).get();out[c]={};x.docs.forEach(y=>out[c][y.id]=y.data())}return out}
+async function backupJSON(){
+  try{const col=await lerTudo();await downloads.save({filename:`backup-acompanhamento-${hoje()}.json`,data:new Blob([JSON.stringify({geradoEm:new Date().toISOString(),origem:"Acompanhamento de Membros",colecoes:col},null,1)],{type:"application/json"})});toast("Backup baixado")}
+  catch(e){console.error(e);toast("Não foi possível gerar o backup.")}
+}
+async function backupXLSX(){
+  if(!window.XLSX){toast("Leitor de planilhas indisponível. Recarregue a página.");return}
+  try{const col=await lerTudo();const M=col.membros,nm={};Object.entries(M).forEach(([i,m])=>nm[i]=m.nome||"");
+    const dn=v=>depInfo(v).n,gn=g=>GRUPOS[g]?.nome||g||"";
+    const mem=Object.entries(M).map(([i,m])=>({Nome:m.nome||"",Departamento:dn(m.faixa),Grupo:gn(m.grupo),Cargo:m.cargo||"",Nascimento:fmt(m.nascimento),CPF:m.cpf||"",WhatsApp:m.whatsapp||"","E-mail":m.email||"","Líder":m.lider||"","Serve em":m.ministerio||"",Bairro:m.bairro||"","Primeira visita":fmt(m.primeiraVisita),"Responsável":m.responsavel||"","Tel. responsável":m.responsavelTel||"","Autorização":m.consentimento?"Sim":"","Observações":m.obs||"",ID:i})).sort((a,b)=>a.Nome.localeCompare(b.Nome,"pt-BR"));
+    const cu=Object.values(col.cuidados).map(c=>({Pessoa:nm[c.membroId]||"",Tipo:c.tipo||"",Prazo:fmt(c.prazo),Status:c.status||"","Data da ação":fmt(c.dataAcao||c.data),Assuntos:(c.assuntosAbordados||c.assuntos||[]).join(", "),"Pontos fortes":c.pontosFortes||c.obs||""}));
+    const pl=Object.values(col.planos).map(p=>({Departamento:dn(p.departamento),"Ação":p.acao||"","Por quê":p.porque||"",Como:p.como||"",Quem:p.responsavel||"",Prazo:fmt(p.prazo),"Situação":(STATUS_P.find(x=>x[0]===p.status)||[,""])[1]}));
+    const en=Object.values(col.encontros).map(e=>({Data:fmt(e.data),Tipo:e.tipo||"","Título":e.titulo||"",Presentes:(e.presentes||[]).length,Nomes:(e.presentes||[]).map(x=>nm[x]||"").join(", ")}));
+    const wb=XLSX.utils.book_new();[["Membros",mem],["Cuidados",cu],["Plano de ação",pl],["Encontros",en]].forEach(([n,r])=>XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(r.length?r:[{}]),n));
+    const buf=XLSX.write(wb,{bookType:"xlsx",type:"array"});
+    await downloads.save({filename:`backup-acompanhamento-${hoje()}.xlsx`,data:new Blob([buf],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"})});toast("Planilha baixada")}
+  catch(e){console.error(e);toast("Não foi possível gerar a planilha.")}
+}
+async function restaurar(file){
+  const box=$("#restInfo");if(!file||!box)return;
+  let j;try{j=JSON.parse(await file.text())}catch(_){box.innerHTML=`<p class="empty">Arquivo inválido.</p>`;return}
+  const col=j.colecoes||j,itens=[];
+  COLS.forEach(c=>{const o=col[c];if(o&&typeof o==="object")Object.entries(o).forEach(([id,d])=>{if(d&&typeof d==="object")itens.push([c,id,d])})});
+  if(!itens.length){box.innerHTML=`<p class="empty">Nenhum dado encontrado no arquivo.</p>`;return}
+  const resumo=COLS.map(c=>[c,itens.filter(i=>i[0]===c).length]).filter(x=>x[1]).map(x=>`${x[0]}: ${x[1]}`).join(", ");
+  if(!(await confirmar(`Restaurar ${itens.length} registros (${resumo})?`,"Restaurar",false)))return;
+  try{for(let i=0;i<itens.length;i+=400){const b=db.batch();itens.slice(i,i+400).forEach(([c,id,d])=>b.set(db.collection(c).doc(id),d));await b.commit();box.innerHTML=`<p class="empty">Restaurando… ${Math.min(i+400,itens.length)} de ${itens.length}</p>`}
+    box.innerHTML=`<p class="empty">Backup restaurado: ${itens.length} registros.</p>`;toast("Backup restaurado")}
+  catch(e){console.error(e);box.innerHTML=`<p class="empty">Erro ao restaurar (${esc(e.code||e.message||"")}).</p>`}
+}
+
+/* ---------- exportar ---------- */
+async function exportar(){
+  const cols=["Nome","Grupo","Faixa","Idade","Nascimento","WhatsApp","Líder","Serve em","Bairro","Como chegou","Primeira visita","Presenças 30 dias","Presenças 60 dias","Ausências seguidas","Última presença","Último contato"];
+  const lin=membros.slice().sort(byNome).map(m=>{const a=analise(m);return [m.nome,GRUPOS[m.grupo]?.nome,faixa(m),idade(m.nascimento)??"",fmt(m.nascimento),m.whatsapp,m.lider,m.ministerio,m.bairro,m.comoChegou,fmt(m.primeiraVisita),a.p30,a.p60,a.seguidas,fmt(a.ultimaPresenca),fmt(a.ultimoContato)]});
+  const csv="\ufeff"+[cols,...lin].map(r=>r.map(v=>{v=String(v??"");return /[;"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}).join(";")).join("\r\n");
+  try{await downloads.save({filename:`acompanhamento-jovens-${hoje()}.csv`,data:new Blob([csv],{type:"text/csv;charset=utf-8"})})}catch(e){if(e&&e.code!=="dismissed"&&e.code!=="declined")toast("Não foi possível exportar.")}
+}
+
+/* ---------- eventos ---------- */
+document.addEventListener("click",async ev=>{
+  const t=ev.target.closest("button,a,[data-goto-grupo]");if(!t)return;
+  const ds=t.dataset;
+  if(ds.close!==undefined){$("#dlg").close();return}
+  if(ds.act==="entrar"){entrar(false);return}
+  if(ds.act==="trocar-conta"){entrar(true);return}
+  if(ds.act==="sair"){firebase.auth().signOut().then(()=>location.reload());return}
+  if(ds.act==="admin"){dlgAdmin();return}
+  if(ds.act==="backup-json"){backupJSON();return}
+  if(ds.act==="backup-xlsx"){backupXLSX();return}
+  if(ds.rmAcesso){if(await confirmar(`Remover o acesso de ${ds.rmAcesso}?`,"Remover")){if(await gravar(()=>db.collection("acessos").doc(ds.rmAcesso).delete(),"Acesso removido"))carregarAcessos()}return}
+  if(ds.chaba){st.chAba=ds.chaba;render();return}
+  if(ds.act==="editar-lideres"){dlgLideres(ds.depLid||"");return}
+  if(ds.act==="novo-plano"){dlgPlano(null);return}
+  if(ds.verPlano){dlgPlano(ds.verPlano);return}
+  if(ds.planoDep!==undefined){st.planoDep=ds.planoDep;render();return}
+  if(ds.planoSt){st.planoSt=ds.planoSt;render();return}
+  if(ds.excluirPlano){if(await confirmar("Excluir esta ação do plano?","Excluir")){if(await gravar(()=>db.collection("planos").doc(ds.excluirPlano).delete(),"Ação excluída"))$("#dlg").close()}return}
+  if(ds.act==="importar"){dlgImportar();return}
+  if(ds.act==="link-cadastro"){dlgLinkCadastro();return}
+  if(ds.act==="salvar-link"){const v=$("#lkCad").value.trim();if(v&&!/^https?:[/][/]/.test(v)){toast("Cole um link que comece com https://");return}if(await gravar(()=>db.collection("config").doc("geral").set({linkCadastro:v,atualizadoPor:meuId||"",atualizadoEm:new Date().toISOString()}),"Link salvo"))dlgLinkCadastro();return}
+  if(ds.act==="baixar-modelo"){baixarModelo();return}
+  if(ds.act==="confirmar-import"){confirmarImport(t);return}
+  if(ds.dep!==undefined){st.faixa=ds.dep;st.grupo=ds.depGrupo||"";st.busca="";st.lider="";if(view==="pessoas")render();else location.hash="#pessoas";return}
+  if(ds.act==="novo-evento"){dlgEventoForm(null);return}
+  if(ds.verEvento){dlgEvento(ds.verEvento);return}
+  if(ds.editarEvento){ev.preventDefault();dlgEventoForm(ds.editarEvento);return}
+  if(ds.act==="guia-form"){ev.preventDefault();const g=$("#guia");if(g)g.hidden=!g.hidden;return}
+  if(ds.copiar!==undefined){copiar(ds.copiar);return}
+  if(ds.act==="copiar-convite"){const e=evAtual();if(e)copiar(convite(e));return}
+  if(ds.pago){const e=evAtual();if(!e)return;const ins=(e.inscritos||[]).map((x,i)=>i===+ds.pago?{...x,pago:!x.pago}:x);await gravar(()=>db.collection("eventos").doc(e.id).update({inscritos:ins}));return}
+  if(ds.rmIns){const e=evAtual();if(!e)return;const x=(e.inscritos||[])[+ds.rmIns];if(!x||!(await confirmar(`Remover ${x.nome} da lista de inscritos?`,"Remover")))return;await gravar(()=>db.collection("eventos").doc(e.id).update({inscritos:e.inscritos.filter((_,i)=>i!==+ds.rmIns)}),"Inscrito removido");return}
+  if(ds.cadIns){const e=evAtual();if(e)await cadastrarInscritos(e,[+ds.cadIns]);return}
+  if(ds.act==="cad-todos"){const e=evAtual();if(e)await cadastrarInscritos(e,(e.inscritos||[]).map((_,i)=>i));return}
+  if(ds.act==="add-inscrito"){$("#insForm").innerHTML=`<form id="fi" class="form" style="padding:12px;background:var(--surface2);border-radius:12px;margin:8px 0"><label class="full">Nome completo<input name="nome" required></label><label>Data de nascimento<input type="date" name="nascimento"></label><label>CPF<input name="cpf" inputmode="numeric"></label><label>Telefone (WhatsApp)<input name="whatsapp" inputmode="tel"></label><label>E-mail<input name="email" type="email"></label><div class="full" style="display:flex;gap:8px;justify-content:flex-end"><button type="button" class="btn" data-act="fechar-ins">Cancelar</button><button class="btn pri" type="submit">Adicionar inscrito</button></div></form>`;setTimeout(()=>$("#fi").nome.focus(),30);return}
+  if(ds.act==="fechar-ins"){$("#insForm").innerHTML="";return}
+  if(ds.excluirEvento){const e=evAtual();if(e&&await confirmar(`Excluir o evento ${e.nome} e a lista de inscritos?`,"Excluir")){if(await gravar(()=>db.collection("eventos").doc(e.id).delete(),"Evento excluído"))$("#dlg").close()}return}
+  if(ds.chamadaEvento){const e=evAtual();if(!e)return;$("#dlg").close();st.chamada={id:null,data:e.data,tipo:"Evento",titulo:e.nome,presentes:new Set()};st.chBusca="";render();return}
+  if(ds.act==="novo"){dlgForm(null);return}
+  if(ds.act==="exportar"){exportar();return}
+  if(ds.gotoGrupo){st.grupo=ds.gotoGrupo;st.faixa=ds.gotoFaixa||"";location.hash="#pessoas";if(view==="pessoas")render();return}
+  if(ds.ver){ev.preventDefault();dlgPessoa(ds.ver);return}
+  if(ds.editar){dlgForm(ds.editar);return}
+  if(ds.contato){const d=$("#dlg");if(d.open)d.close();st.ctMembro=ds.contato;if(view==="cuidado")render();else location.hash="#cuidado";setTimeout(()=>document.querySelector('#fc select[name="tipo"]')?.focus(),60);return}
+  if(ds.mover){const m=membroPorId($("#dlg").dataset.id);if(!m||m.grupo===ds.mover)return;const motivo=await confirmar(`Mover para ${GRUPOS[ds.mover].nome}?`,"Mover",false,"Motivo (opcional)");if(motivo===null)return;await moverGrupo(m,ds.mover,motivo);return}
+  if(ds.excluir){const m=membroPorId(ds.excluir);if(m&&await confirmar(`Excluir ${m.nome}? O histórico de cuidado fica guardado, mas a pessoa sai das listas.`,"Excluir")){if(await gravar(()=>db.collection("membros").doc(m.id).delete(),"Pessoa excluída"))$("#dlg").close()}return}
+  if(ds.aceitar){const m=membroPorId(ds.aceitar);if(m)await moverGrupo(m,ds.para,"Sugestão do painel: "+ds.motivo);return}
+  if(ds.dispensar){const d=new Date();d.setDate(d.getDate()+30);await gravar(()=>db.collection("membros").doc(ds.dispensar).update({dispensarAte:d.toISOString().slice(0,10)}),"Sugestão ignorada por 30 dias");return}
+  if(ds.fgrupo!==undefined){st.grupo=ds.fgrupo;document.querySelectorAll("[data-fgrupo]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.fgrupo===st.grupo));lPessoas();return}
+  if(ds.ctf){st.ctFiltro=ds.ctf;document.querySelectorAll("[data-ctf]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.ctf===st.ctFiltro));lCuidado();return}
+  if(ds.concluir){st.concluindo=ds.concluir;lCuidado();setTimeout(()=>document.querySelector("#fconc textarea")?.focus(),30);return}
+  if(ds.cancelarConc!==undefined){st.concluindo="";lCuidado();return}
+  if(ds.reabrir){if(await confirmar("Reabrir esta ação como pendente?","Reabrir",false))await gravar(()=>db.collection("cuidados").doc(ds.reabrir).update({status:"pendente"}),"Ação reaberta");return}
+  if(ds.act==="iniciar"){st.chamada={id:null,data:$("#chData").value||hoje(),tipo:$("#chTipo").value,titulo:$("#chTit").value.trim(),presentes:new Set()};st.chBusca="";render();return}
+  if(ds.abrirEnc){const e=encontros.find(x=>x.id===ds.abrirEnc);if(e){st.chamada={id:e.id,data:e.data,tipo:e.tipo,titulo:e.titulo||"",presentes:new Set(e.presentes||[])};st.chBusca="";render()}return}
+  if(ds.pres){const s=st.chamada.presentes;s.has(ds.pres)?s.delete(ds.pres):s.add(ds.pres);t.setAttribute("aria-pressed",s.has(ds.pres));t.querySelector(".box").textContent=s.has(ds.pres)?"✓":"";$("#chCount").textContent=`${s.size} ${s.size===1?"presente":"presentes"}`;return}
+  if(ds.act==="cancelar-ch"){if(st.chamada.presentes.size&&!st.chamada.id&&!(await confirmar("Descartar esta chamada?","Descartar")))return;st.chamada=null;render();return}
+  if(ds.act==="salvar-ch"){const ch=st.chamada;const ref=ch.id?db.collection("encontros").doc(ch.id):db.collection("encontros").doc();
+    const body={data:ch.data,tipo:ch.tipo,titulo:ch.titulo,presentes:[...ch.presentes],atualizadoEm:new Date().toISOString(),atualizadoPor:meuId||""};
+    if(await gravar(()=>ref.set(body),"Chamada salva")){st.chamada=null;render()}return}
+  if(ds.act==="excluir-enc"){if(await confirmar("Excluir este encontro e as presenças marcadas?","Excluir")){if(await gravar(()=>db.collection("encontros").doc(st.chamada.id).delete(),"Encontro excluído")){st.chamada=null;render()}}return}
+  if(ds.act==="visitante"){const n=$("#vNome").value.trim();if(!n){$("#vNome").focus();return}const ch=st.chamada;const ref=db.collection("membros").doc();
+    const doc={nome:n,whatsapp:$("#vTel").value.trim(),faixa:$("#vFaixa").value,grupo:"conectando",primeiraVisita:ch.data,comoChegou:"",criadoEm:new Date().toISOString(),criadoPor:meuId||"",historico:[{de:null,para:"conectando",data:new Date().toISOString(),motivo:"Visitante na chamada",por:meuId||""}]};
+    if(await gravar(()=>ref.set(doc),"Visitante adicionado")){ch.presentes.add(ref.id);$("#vNome").value="";$("#vTel").value="";lChamada()}return}
+});
+document.addEventListener("input",ev=>{
+  if(ev.target.id==="busca"){st.busca=ev.target.value;lPessoas()}
+  if(ev.target.id==="chBusca"){st.chBusca=ev.target.value;lChamada()}
+});
+document.addEventListener("change",ev=>{
+  if(ev.target.id==="ffaixa"){st.faixa=ev.target.value;lPessoas()}
+  if(ev.target.id==="flider"){st.lider=ev.target.value;lPessoas()}
+  if(ev.target.name==="membroId"&&ev.target.form?.id==="fc")st.ctMembro=ev.target.value;
+});
+document.addEventListener("submit",async ev=>{
+  if(ev.target.id==="fi"){ev.preventDefault();const f=ev.target,e=evAtual();if(!e)return;
+    const i={nome:f.nome.value.trim(),nascimento:f.nascimento.value,cpf:soDig(f.cpf.value),whatsapp:f.whatsapp.value.trim(),email:f.email.value.trim().toLowerCase(),pago:false};
+    if(!i.nome){f.nome.focus();return}
+    if(i.cpf&&i.cpf.length!==11){toast("O CPF deve ter 11 números.");f.cpf.focus();return}
+    const m=acharMembro(i);if(m)i.membroId=m.id;
+    if(await gravar(()=>db.collection("eventos").doc(e.id).update({inscritos:[...(e.inscritos||[]),i]}),"Inscrito adicionado")){$("#insForm").innerHTML="";dlgEvento(e.id)}return}
+  if(ev.target.id==="fconc"){ev.preventDefault();const f=ev.target;const ab=[...f.querySelectorAll("input[name=abordado]:checked")].map(i=>i.value);if(!ab.length){toast("Marque pelo menos um assunto abordado.");f.querySelector("input[name=abordado]").focus();return}const pontos=f.pontos.value.trim();if(!pontos){f.pontos.focus();return}
+    if(await gravar(()=>db.collection("cuidados").doc(f.dataset.id).update({status:"concluido",dataAcao:f.dataAcao.value||hoje(),pontosFortes:pontos,assuntosAbordados:ab,concluidoPor:meuId||"",concluidoEm:new Date().toISOString()}),"Ação concluída")){st.concluindo="";lCuidado()}return}
+  if(ev.target.id!=="fc")return;
+  ev.preventDefault();const f=ev.target;
+  const body={membroId:f.membroId.value,tipo:f.tipo.value,prazo:f.prazo.value,assuntos:[...f.querySelectorAll("input[name=assunto]:checked")].map(i=>i.value),status:"pendente",autorId:meuId||"",criadoEm:new Date().toISOString()};
+  if(!body.membroId){f.membroId.focus();return}
+  if(!body.prazo){f.prazo.focus();return}
+  if(await gravar(()=>db.collection("cuidados").doc().set(body),"Ação salva como pendente")){st.ctMembro="";f.membroId.value="";f.querySelectorAll("input[name=assunto]").forEach(i=>i.checked=false);st.ctFiltro="pendentes";document.querySelectorAll("[data-ctf]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.ctf==="pendentes"));lCuidado()}
+});
+$("#dlg").addEventListener("close",()=>{$("#dlg").dataset.id="";$("#dlg").dataset.ev=""});
+
+/* ---------- dados ---------- */
+let pendRender=false;
+function agendar(){if(pendRender)return;pendRender=true;requestAnimationFrame(()=>{pendRender=false;atualizar()})}
+function atualizar(){
+  if(view==="painel"||view==="funil"||view==="plano")render();
+  else if(view==="pessoas")lPessoas();
+  else if(view==="chamada"){if(st.chamada)lChamada();else render()}
+  else if(view==="cuidado"){const sel=document.querySelector('#fc select[name="membroId"]');if(sel){const v=sel.value;sel.innerHTML=opcoesMembros(v);sel.value=v}if(!st.concluindo)lCuidado()}
+  const d=$("#dlg");if(d.open&&d.dataset.id&&!d.querySelector("#fp")){if(membroPorId(d.dataset.id))dlgPessoa(d.dataset.id);else d.close()}
+  if(d.open&&d.dataset.ev&&!d.querySelector("#fe")&&!d.querySelector("#fi")){if(eventos.some(x=>x.id===d.dataset.ev)||d.querySelector("h2")?.textContent==="Carregando…")dlgEvento(d.dataset.ev);else d.close()}
+}
+async function resolverNomes(){
+  const ids=[...new Set([...cuidados.map(c=>c.autorId),...cuidados.map(c=>c.concluidoPor)].filter(id=>id&&!(id in nomes)))];
+  if(!ids.length)return;
+  ids.forEach(id=>nomes[id]="");
+  await Promise.all(ids.map(async id=>{try{const x=await db.collection("usuarios").doc(id).get();if(x.exists)nomes[id]=x.data().nome||x.data().email||""}catch(_){}}));
+  agendar();
+}
+function assinar(col,key,set){
+  db.collection(col).onSnapshot(s=>{
+    set(s.docs.map(d=>({id:d.id,...d.data()})));
+    if(!s.metadata.fromCache)loaded[key]=true;
+    if(loaded.m&&loaded.e&&loaded.c){clearTimeout(timer);setSync("Dados sincronizados com a equipe")}
+    if(col==="cuidados")resolverNomes();
+    agendar();
+  },e=>{clearTimeout(timer);setSync(e.code==="permission-denied"?"Sem permissão para ver os dados. Fale com o administrador.":"Não foi possível carregar os dados. Recarregue a página.");console.error(e)});
+}
+let timer=null,assinado=false;
+const FB_CONFIG={
+  apiKey:"AIzaSyAjK2jhmt10joTSFT6f6t-V23k_fZp1XUI",
+  authDomain:"acompanhamento-membros.firebaseapp.com",
+  projectId:"acompanhamento-membros",
+  storageBucket:"acompanhamento-membros.firebasestorage.app",
+  messagingSenderId:"127677935199",
+  appId:"1:127677935199:web:a519dcefa289b894dfb5ea"
+};
+const DONO="diegovida2@gmail.com";
+function telaLogin(msg,botao,trocar){
+  db=null;document.body.classList.add("sem-acesso");$("#usr").innerHTML="";setSync(msg?"Acesso necessário":"Entre para continuar");
+  $("#app").innerHTML=`<div class="login panel"><h2>Acompanhamento de Membros</h2><p class="sub" style="margin:0">Entre com a sua conta Google autorizada.</p>${msg?`<p class="notice" style="margin:0">${esc(msg)}</p>`:""}${botao?`<button class="btn pri" data-act="${trocar?"trocar-conta":"entrar"}">${trocar?"Entrar com outra conta":"Entrar com Google"}</button>`:""}</div>`;
+}
+function msgErroLogin(e){if(e&&e.code==="auth/unauthorized-domain")return "Este endereço ainda não está autorizado no Firebase (Domínios autorizados).";return "Não foi possível entrar. Tente de novo."}
+async function entrar(trocar){
+  const auth=firebase.auth(),p=new firebase.auth.GoogleAuthProvider();p.setCustomParameters({prompt:"select_account"});
+  try{if(trocar)await auth.signOut();await auth.signInWithPopup(p)}
+  catch(e){if(e.code==="auth/popup-blocked"||e.code==="auth/operation-not-supported-in-this-environment"){await auth.signInWithRedirect(p)}else if(e.code!=="auth/popup-closed-by-user"&&e.code!=="auth/cancelled-popup-request"){console.error(e);telaLogin(msgErroLogin(e),true)}}
+}
+async function init(){
+  window.addEventListener("hashchange",route);
+  downloads={save:async({filename,data})=>{const u=URL.createObjectURL(data);const a=document.createElement("a");a.href=u;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),5000)}};
+  if(!window.firebase){telaLogin("Não foi possível carregar o Firebase. Verifique a conexão e recarregue a página.",false);return}
+  firebase.initializeApp(FB_CONFIG);
+  const auth=firebase.auth();
+  auth.getRedirectResult().catch(e=>{console.error(e);telaLogin(msgErroLogin(e),true)});
+  auth.onAuthStateChanged(async u=>{
+    if(!u){telaLogin("",true);return}
+    meuEmail=(u.email||"").toLowerCase();meuId=u.uid;meuNome=u.displayName||meuEmail;
+    const fdb=firebase.firestore();let papel=null;
+    if(meuEmail===DONO)papel="admin";
+    else{try{const x=await fdb.collection("acessos").doc(meuEmail).get();if(x.exists)papel=x.data().papel||"lider"}catch(e){console.error(e)}}
+    if(!papel){telaLogin(`O e-mail ${meuEmail} ainda não tem acesso. Peça ao administrador para liberar.`,true,true);return}
+    ehAdmin=papel==="admin";podeEditar=true;db=fdb;
+    document.body.classList.remove("sem-acesso");
+    $("#usr").innerHTML=`${esc(meuEmail)} · ${ehAdmin?`<button class="lnk" data-act="admin">Administração</button> · `:""}<button class="lnk" data-act="sair">Sair</button>`;
+    nomes[meuId]=meuNome;
+    fdb.collection("usuarios").doc(meuId).set({nome:meuNome,email:meuEmail,ultimoAcesso:new Date().toISOString()},{merge:true}).catch(()=>{});
+    route();
+    if(assinado)return;assinado=true;
+    timer=setTimeout(()=>setSync("Ainda não foi possível acessar os dados. Verifique a conexão."),10000);
+  assinar("membros","m",v=>membros=v.filter(m=>m.nome));
+  assinar("encontros","e",v=>encontros=v.filter(e=>e.data));
+  db.collection("config").onSnapshot(s=>{const c={};s.docs.forEach(x=>c[x.id]=x.data());cfg=c;agendar()},e=>console.error(e));
+  assinar("planos","p",v=>planos=v.filter(p=>p.acao));
+  assinar("eventos","v",v=>eventos=v.filter(e=>e.nome));
+  assinar("cuidados","c",v=>cuidados=v.filter(c=>c.membroId).map(c=>({...c,status:c.status||"concluido",dataAcao:c.dataAcao||c.data||"",pontosFortes:c.pontosFortes??c.obs??""})));
+  });
+}
+init();
+})();
+</script>
+</body>
+</html>
