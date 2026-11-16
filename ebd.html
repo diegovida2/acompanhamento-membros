@@ -615,9 +615,11 @@ function dlgVisitante(){
   <div class="dlg-b"><div class="form"><label class="full">Nome<input name="nome" required autocomplete="off"></label><label>Idade<input name="idade" type="number" min="0" max="120" inputmode="numeric"></label><label>Responsável<input name="responsavel" autocomplete="off"></label><label class="full">Telefone do responsável<input name="tel" inputmode="tel" placeholder="(11) 90000-0000"></label></div></div>
   <div class="dlg-f"><button class="btn pri" type="submit">Cadastrar e marcar presente</button></div></form>`;
   d.querySelector("#fVis").addEventListener("submit",async ev=>{ev.preventDefault();const E=ev.target.elements;const nome=E.nome.value.trim();if(!nome)return;
-    const ref=db.collection("ebd_alunos").doc();
-    const ok=await gravar(()=>ref.set({nome,idade:E.idade.value,responsavel:E.responsavel.value.trim(),responsavelTel:E.tel.value.trim(),visitante:true,salaId:st.sala,primeiraVisita:st.dia,origem:"visitante",criadoEm:new Date().toISOString(),criadoPor:meuEmail}));
-    if(ok){const a=aulaDe(st.dia,st.sala)||{};await salvarDia({presentes:[...(a.presentes||[]),ref.id]},"Visitante cadastrado e marcado presente");d.close()}});
+    const ref=db.collection("ebd_alunos").doc();const idd=E.idade.value===""?null:+E.idade.value;const sp=idd!=null?salaPorIdade(idd):null;const destino=sp?sp.id:st.sala;
+    const ok=await gravar(()=>ref.set({nome,idade:E.idade.value,responsavel:E.responsavel.value.trim(),responsavelTel:E.tel.value.trim(),visitante:true,salaId:destino,primeiraVisita:st.dia,origem:"visitante",criadoEm:new Date().toISOString(),criadoPor:meuEmail}));
+    if(ok){const a=aulaDe(st.dia,destino)||{};
+      await gravar(()=>db.collection("ebd_aulas").doc(aulaId(st.dia,destino)).set({data:st.dia,salaId:destino,tri:triAtual(dt(st.dia)),presentes:[...(a.presentes||[]),ref.id]},{merge:true}),destino===st.sala?"Visitante cadastrado e marcado presente":`Pela idade, ${nome} foi para a sala ${salaNome(destino)} e já está marcado presente lá`);
+      d.close()}});
   d.showModal();setTimeout(()=>d.querySelector("input").focus(),30);
 }
 function abaResumo(a){const r=a.resumo||{};return `<form id="fRes" class="panel" style="display:grid;gap:12px">
@@ -666,17 +668,34 @@ function textoDia(){const a=aulaDe(st.dia,st.sala)||{},c=contaDia(a),r=a.resumo|
   if(r.tema||a.tema)L.push(`📖 Tema: ${r.tema||a.tema}`);if(r.versiculo)L.push(`✝️ Versículo: ${r.versiculo}`);
   L.push(`👧 Alunos presentes: ${c.alunos}`,`👋 Visitantes: ${c.vis}`);if((a.responsaveis||[]).length)L.push(`🙋 Responsáveis: ${a.responsaveis.join(", ")}`);
   return L.join(String.fromCharCode(10))}
+const temIdades=sl=>sl.idadeMin!=null&&sl.idadeMin!==""&&sl.idadeMax!=null&&sl.idadeMax!=="";
+function salaPorIdade(i){if(i==null||isNaN(i))return null;return salasOrd().find(sl=>temIdades(sl)&&i>=+sl.idadeMin&&i<=+sl.idadeMax)||null}
+function idadeAluno(x){if(x.nascimento)return idadeDe(x.nascimento);if(x.idade!==""&&x.idade!=null&&!isNaN(+x.idade))return +x.idade;return null}
+function faixaTxt(sl){return temIdades(sl)?`${sl.idadeMin} a ${sl.idadeMax} anos`:(sl.publico?esc(sl.publico):"Sem faixa de idade")}
+function lerFaixa(f){const a=f.elements.idadeMin.value,b=f.elements.idadeMax.value;if((a===""&&b!=="")||(a!==""&&b===""))return {erro:"Preencha a idade mínima e a máxima, ou deixe as duas em branco."};if(a!==""&&+a>+b)return {erro:"A idade mínima não pode ser maior que a máxima."};return {idadeMin:a===""?null:+a,idadeMax:b===""?null:+b}}
+function dlgSala(id){const sl=salas.find(x=>x.id===id);if(!sl)return;const d=$("#dlg");
+  d.innerHTML=`<form id="fSalaEd"><div class="dlg-h"><h2>Editar sala</h2><button type="button" class="btn ghost sm" data-close>Fechar</button></div><div class="dlg-b"><div class="form"><label class="full">Nome<input name="nome" required value="${esc(sl.nome)}"></label><label>Idade mínima<input name="idadeMin" type="number" min="0" max="120" value="${sl.idadeMin??""}"></label><label>Idade máxima<input name="idadeMax" type="number" min="0" max="120" value="${sl.idadeMax??""}"></label><label>Ordem<input name="ordem" type="number" min="1" value="${sl.ordem??""}"></label></div><p class="hint" style="margin:0">Com a faixa de idade, as crianças vão automaticamente para esta sala.</p></div><div class="dlg-f"><button class="btn pri" type="submit">Salvar</button></div></form>`;
+  d.querySelector("#fSalaEd").addEventListener("submit",async ev=>{ev.preventDefault();const f=ev.target;const fx=lerFaixa(f);if(fx.erro){toast(fx.erro);return}
+    if(await gravar(()=>db.collection("ebd_salas").doc(id).update({nome:f.elements.nome.value.trim(),idadeMin:fx.idadeMin,idadeMax:fx.idadeMax,ordem:+f.elements.ordem.value||99}),"Sala atualizada"))d.close()});
+  d.showModal()}
+async function reorganizar(){
+  const mov=alunos.map(x=>({x,i:idadeAluno(x)})).map(o=>({...o,sl:salaPorIdade(o.i)})).filter(o=>o.sl&&o.sl.id!==o.x.salaId);
+  if(!mov.length){toast("Todas as crianças já estão na sala da idade delas.");return}
+  if(!(await confirmar(`Mover ${mov.length} ${mov.length===1?"criança":"crianças"} para a sala da idade? ${mov.slice(0,6).map(o=>o.x.nome.split(" ")[0]+" → "+o.sl.nome).join(", ")}${mov.length>6?"…":""}`,"Mover",false)))return;
+  let n=0;for(const o of mov){if(await gravar(()=>db.collection("ebd_alunos").doc(o.x.id).update({salaId:o.sl.id})))n++;else break}
+  toast(`${n} ${n===1?"criança mudou":"crianças mudaram"} de sala`);
+}
 function idadeDe(n){if(!n)return null;const h=new Date(),b=dt(n);let x=h.getFullYear()-b.getFullYear();if(h.getMonth()<b.getMonth()||(h.getMonth()===b.getMonth()&&h.getDate()<b.getDate()))x--;return x}
 function dlgTrazer(){
-  garantirSala();const d=$("#dlg");const ja=new Set(alunos.map(x=>x.membroId).filter(Boolean)),jaN=new Set(alunos.map(x=>norm(x.nome)));
-  const kids=membrosDir.filter(m=>{const i=idadeDe(m.nascimento);return i!=null&&i<12&&!ja.has(m.id)&&!jaN.has(norm(m.nome))}).sort(byNome);
-  d.innerHTML=`<form id="fTrazer"><div class="dlg-h"><div><h2>Trazer crianças do cadastro</h2><div class="sub">Crianças (até 11 anos) do cadastro de membros que ainda não são alunos</div></div><button type="button" class="btn ghost sm" data-close>Fechar</button></div>
-  <div class="dlg-b"><label class="lbl2">Sala<select name="sala">${salasOrd().map(s=>`<option value="${s.id}" ${s.id===st.sala?"selected":""}>${esc(s.nome)}</option>`).join("")}</select></label>
-  ${kids.length?`<div class="opts">${kids.map(k=>`<label class="opt on"><input type="checkbox" name="kid" value="${k.id}" checked><span>${esc(k.nome)}</span><span class="mini">${idadeDe(k.nascimento)} anos</span></label>`).join("")}</div>`:`<p class="empty">Nenhuma criança nova encontrada no cadastro. Se você acabou de importar, abra o Painel uma vez para atualizar a lista.</p>`}</div>
-  ${kids.length?`<div class="dlg-f"><button class="btn pri" type="submit">Cadastrar como alunos</button></div>`:""}</form>`;
-  d.querySelector("#fTrazer").addEventListener("submit",async ev=>{ev.preventDefault();const f=ev.target;const sala=f.elements.sala.value;const ids=[...f.querySelectorAll('input[name=kid]:checked')].map(i=>i.value);let n=0;
-    for(const id of ids){const k=membrosDir.find(m=>m.id===id);if(!k)continue;if(await gravar(()=>db.collection("ebd_alunos").doc().set({nome:k.nome,nascimento:k.nascimento||"",whatsapp:k.whatsapp||"",membroId:k.id,salaId:sala,origem:"membro",criadoEm:new Date().toISOString(),criadoPor:meuEmail})))n++;else break}
-    toast(`${n} ${n===1?"criança cadastrada":"crianças cadastradas"} como aluno`);d.close()});
+  const d=$("#dlg");const ja=new Set(alunos.map(x=>x.membroId).filter(Boolean)),jaN=new Set(alunos.map(x=>norm(x.nome)));
+  const temFaixa=salas.some(sl=>temIdades(sl));
+  const kids=membrosDir.map(m=>({m,i:idadeDe(m.nascimento)})).filter(k=>k.i!=null&&salaPorIdade(k.i)&&!ja.has(k.m.id)&&!jaN.has(norm(k.m.nome))).sort((a,b)=>byNome(a.m,b.m));
+  d.innerHTML=`<form id="fTrazer"><div class="dlg-h"><div><h2>Trazer crianças do cadastro</h2><div class="sub">Cada criança vai para a sala da idade dela</div></div><button type="button" class="btn ghost sm" data-close>Fechar</button></div>
+  <div class="dlg-b">${!temFaixa?`<p class="notice">Defina a faixa de idade das salas em <b>Salas e equipe</b> (ex.: Ovelhinhas de 1 a 5 anos). Sem isso o app não sabe para qual sala mandar cada criança.</p>`:kids.length?`<div class="opts">${kids.map(k=>`<label class="opt on"><input type="checkbox" name="kid" value="${k.m.id}" checked><span>${esc(k.m.nome)}</span><span class="mini">${k.i} ${k.i===1?"ano":"anos"} → ${esc(salaPorIdade(k.i).nome)}</span></label>`).join("")}</div>`:`<p class="empty">Nenhuma criança nova encontrada no cadastro dentro das faixas de idade das salas. Se você acabou de importar, abra o Painel uma vez para atualizar a lista.</p>`}</div>
+  ${temFaixa&&kids.length?`<div class="dlg-f"><button class="btn pri" type="submit">Cadastrar como alunos</button></div>`:""}</form>`;
+  const fm=d.querySelector("#fTrazer");fm.addEventListener("submit",async ev=>{ev.preventDefault();const ids=[...fm.querySelectorAll('input[name=kid]:checked')].map(i=>i.value);let n=0;
+    for(const id of ids){const k=membrosDir.find(m=>m.id===id);if(!k)continue;const sl=salaPorIdade(idadeDe(k.nascimento));if(!sl)continue;if(await gravar(()=>db.collection("ebd_alunos").doc().set({nome:k.nome,nascimento:k.nascimento||"",whatsapp:k.whatsapp||"",membroId:k.id,salaId:sl.id,origem:"membro",criadoEm:new Date().toISOString(),criadoPor:meuEmail})))n++;else break}
+    toast(`${n} ${n===1?"criança cadastrada":"crianças cadastradas"} nas salas pela idade`);d.close()});
   d.showModal();
 }
 function secEquipe(){
@@ -720,7 +739,7 @@ function vIndicadores(){
 
 /* ---------- alunos ---------- */
 function vAlunos(){
-  return `<div class="view-title"><div><h2>Alunos</h2><p class="sub">${alunos.filter(x=>!x.visitante).length} alunos e ${alunos.filter(x=>x.visitante).length} visitantes</p></div><div style="display:flex;gap:8px;flex-wrap:wrap">${souAdmin?`<button class="btn" data-act="trazer-criancas">Trazer crianças do cadastro</button>`:""}${triSel()}</div></div>
+  return `<div class="view-title"><div><h2>Alunos</h2><p class="sub">${alunos.filter(x=>!x.visitante).length} alunos e ${alunos.filter(x=>x.visitante).length} visitantes</p></div><div style="display:flex;gap:8px;flex-wrap:wrap">${souAdmin?`<button class="btn" data-act="trazer-criancas">Trazer crianças do cadastro</button><button class="btn" data-act="reorganizar">Reorganizar salas por idade</button>`:""}${triSel()}</div></div>
   <div class="toolbar"><input type="search" id="alBusca" placeholder="Buscar por nome" value="${esc(st.alBusca)}" aria-label="Buscar aluno">
   <select data-alsala aria-label="Sala" style="width:auto"><option value="">Todas as salas</option>${salasOrd().map(s=>`<option value="${s.id}" ${st.alSala===s.id?"selected":""}>${esc(s.nome)}</option>`).join("")}</select></div><div id="alLista"></div>`;
 }
@@ -735,7 +754,7 @@ function dlgAluno(id){
   const x=alunos.find(a=>a.id===id);if(!x)return;const d=$("#dlg");
   d.innerHTML=`<form id="fAluno"><div class="dlg-h"><h2>${esc(x.nome)}</h2><button type="button" class="btn ghost sm" data-close>Fechar</button></div><div class="dlg-b"><div class="form">
     <label class="full">Nome completo<input name="nome" required value="${esc(x.nome)}"></label>
-    <label>Sala<select name="salaId">${salasOrd().map(s=>`<option value="${s.id}" ${s.id===x.salaId?"selected":""}>${esc(s.nome)}</option>`).join("")}</select></label>
+    <label>Sala ${(()=>{const sp=salaPorIdade(idadeAluno(x));return sp?`<span class="hint">pela idade: ${esc(sp.nome)}</span>`:""})()}<select name="salaId">${salasOrd().map(s=>`<option value="${s.id}" ${s.id===x.salaId?"selected":""}>${esc(s.nome)}</option>`).join("")}</select></label>
     <label>WhatsApp<input name="whatsapp" inputmode="tel" value="${esc(x.whatsapp)}"></label>
     <label>Nascimento<input type="date" name="nascimento" value="${esc(x.nascimento)}"></label>
     <label>Situação<select name="vis"><option value="">Aluno(a)</option><option value="1" ${x.visitante?"selected":""}>Visitante</option></select></label>
@@ -750,8 +769,8 @@ function dlgAluno(id){
 function vSalas(){
   const ss=salasOrd();
   return `<div class="view-title"><div><h2>Salas e equipe</h2><p class="sub">Turmas da Escola Bíblica Dominical</p></div></div>
-  ${souAdmin?`<section class="panel"><h3>Nova sala</h3><form id="fSala" class="form"><label>Nome da sala<input name="nome" required placeholder="Ex.: Juniores"></label><label>Público<input name="publico" placeholder="Ex.: 9 a 12 anos"></label><label>Ordem<input name="ordem" type="number" min="1" value="${ss.length+1}"></label><div style="align-self:end"><button class="btn pri" type="submit" style="width:100%">Adicionar sala</button></div></form></section>`:""}
-  <section class="panel" style="margin-top:14px">${ss.length?`<ul class="list">${ss.map(s=>`<li><div class="grow"><div class="t">${esc(s.nome)}</div><div class="m">${s.publico?esc(s.publico)+" · ":""}${alunos.filter(x=>x.salaId===s.id).length} alunos</div></div>${souAdmin?`<button class="btn sm ghost danger" data-rm-sala="${s.id}">Remover</button>`:""}</li>`).join("")}</ul>`:`<p class="empty">Nenhuma sala cadastrada.</p>`}</section>${secEquipe()}`;
+  ${souAdmin?`<section class="panel"><h3>Nova sala</h3><form id="fSala" class="form"><label>Nome da sala<input name="nome" required placeholder="Ex.: Juniores"></label><label>Idade mínima<input name="idadeMin" type="number" min="0" max="120" inputmode="numeric" placeholder="Ex.: 1"></label><label>Idade máxima<input name="idadeMax" type="number" min="0" max="120" inputmode="numeric" placeholder="Ex.: 5"></label><label>Ordem<input name="ordem" type="number" min="1" value="${ss.length+1}"></label><div style="align-self:end"><button class="btn pri" type="submit" style="width:100%">Adicionar sala</button></div></form></section>`:""}
+  <section class="panel" style="margin-top:14px">${ss.length?`<ul class="list">${ss.map(s=>`<li><div class="grow"><div class="t">${esc(s.nome)}</div><div class="m">${faixaTxt(s)} · ${alunos.filter(x=>x.salaId===s.id&&!x.visitante).length} alunos</div></div>${souAdmin?`<button class="btn sm" data-editar-sala="${s.id}">Editar</button><button class="btn sm ghost danger" data-rm-sala="${s.id}">Remover</button>`:""}</li>`).join("")}</ul>`:`<p class="empty">Nenhuma sala cadastrada.</p>`}</section>${secEquipe()}`;
 }
 
 /* ---------- administração: quem acessa a EBD ---------- */
@@ -788,6 +807,8 @@ document.addEventListener("click",async ev=>{
   if(ds.rmFoto){if(!(await confirmar("Excluir esta foto?","Excluir")))return;const id=aulaId(st.dia,st.sala);if(await gravar(()=>db.collection("ebd_fotos").doc(ds.rmFoto).delete(),"Foto excluída")){cacheFotos[id]=(cacheFotos[id]||[]).filter(x=>x.id!==ds.rmFoto);await salvarDia({fotosQtd:cacheFotos[id].length});render()}return}
   if(ds.rmEquipe){if(await confirmar("Remover esta pessoa da equipe?","Remover"))await gravar(()=>db.collection("ebd_equipe").doc(ds.rmEquipe).delete(),"Removido da equipe");return}
   if(ds.act==="trazer-criancas"){dlgTrazer();return}
+  if(ds.act==="reorganizar"){reorganizar();return}
+  if(ds.editarSala){dlgSala(ds.editarSala);return}
   if(ds.close!==undefined){$("#dlg").close();return}
   if(ds.act==="entrar"){entrar(false);return}
   if(ds.act==="trocar-conta"){entrar(true);return}
@@ -845,7 +866,7 @@ document.addEventListener("submit",async ev=>{
     const mb=membrosDir.find(m=>norm(m.nome)===norm(nome));
     const id=await novoAluno({nome,whatsapp:f.elements.whatsapp.value.trim(),nascimento:f.elements.nascimento.value,salaId:st.presSala,origem:mb?"membro":"cadastro EBD",membroId:mb?mb.id:""});
     if(id){st.pres.set.add(id);st.pres.mudou=true;f.reset();toast("Aluno cadastrado e marcado presente");setTimeout(lPresenca,200)}return}
-  if(f.id==="fSala"){ev.preventDefault();const v={nome:f.elements.nome.value.trim(),publico:f.elements.publico.value.trim(),ordem:+f.elements.ordem.value||99};if(!v.nome)return;
+  if(f.id==="fSala"){ev.preventDefault();const v={nome:f.elements.nome.value.trim(),...lerFaixa(f),ordem:+f.elements.ordem.value||99};if(!v.nome)return;if(v.erro){toast(v.erro);return}delete v.erro;
     if(await gravar(()=>db.collection("ebd_salas").doc().set(v),"Sala adicionada"))f.reset();return}
 });
 window.addEventListener("beforeunload",e=>{if(st.pres&&st.pres.mudou){e.preventDefault();e.returnValue=""}});
