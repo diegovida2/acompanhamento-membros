@@ -430,7 +430,7 @@ function vEscala(){
   const cel=(d,s)=>{const a=aulaDe(d,s.id);if(!a||!a.professor)return `<button class="esc-cel vazio" data-aula="${d}|${s.id}">${souAdmin?"+ Escalar":"—"}</button>`;
     const pr=a.preparo&&a.preparo.status==="pronto";
     return `<button class="esc-cel" data-aula="${d}|${s.id}"><b>${esc(a.professor)}</b>${a.licaoNum||a.licao?`<span>${a.licaoNum?"Lição "+esc(a.licaoNum):""}${a.licaoNum&&a.licao?" · ":""}${esc(a.licao||"")}</span>`:""}<span class="chip ${pr?"c-ok":"c-pend"}"><span class="dot"></span>${pr?"Aula preparada":"Preparo pendente"}</span></button>`};
-  return `<div class="view-title"><div><h2>Escala de professores</h2><p class="sub">${triLabel(st.tri)} · ${ds.length} domingos</p></div><div style="display:flex;gap:8px;flex-wrap:wrap">${triSel()}<button class="btn" data-act="copiar-escala">Copiar para WhatsApp</button></div></div>
+  return `<div class="view-title"><div><h2>Escala de professores</h2><p class="sub">${triLabel(st.tri)} · ${ds.length} domingos</p></div><div style="display:flex;gap:8px;flex-wrap:wrap">${triSel()}${souAdmin?`<button class="btn" data-act="importar-escala">Importar escala</button>`:""}<button class="btn" data-act="copiar-escala">Copiar para WhatsApp</button></div></div>
   ${ss.length?`<div class="scroll rows" style="padding:0"><table class="tbl esc"><thead><tr><th>Domingo</th>${ss.map(s=>`<th>${esc(s.nome)}</th>`).join("")}</tr></thead><tbody>${ds.map(d=>`<tr class="${d<hoje()?"passado":""}"><td><b>${fmtC(d)}</b>${d===proxDomingo()?`<div class="hint">próximo</div>`:""}</td>${ss.map(s=>`<td>${cel(d,s)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`:""}`;
 }
 function proxDomingo(){const d=new Date();while(d.getDay()!==0)d.setDate(d.getDate()+1);return iso(d)}
@@ -707,6 +707,39 @@ function secEquipe(){
   <div class="grid2"><div><h4>Professores</h4>${g("professor").length?`<ul class="list">${g("professor").map(li).join("")}</ul>`:`<p class="empty">Nenhum ainda.</p>`}</div><div><h4>Ajudantes</h4>${g("ajudante").length?`<ul class="list">${g("ajudante").map(li).join("")}</ul>`:`<p class="empty">Nenhum ainda.</p>`}</div></div></section>`;
 }
 
+/* ---------- importar escala colada (texto do WhatsApp) ---------- */
+const tituloNome=n=>n.toLowerCase().replace(/(^|\s)\S/g,c=>c.toUpperCase()).trim();
+function lerEscalaTexto(txt,tri){
+  const ds=domingos(tri);let idx=0;const ok=[],erros=[];
+  txt.split(/\r?\n/).forEach(l=>{const t=l.trim();if(!t)return;const m=t.match(/^([^:]+):\s*(.+)$/);if(!m)return;
+    const nums=(m[2].match(/\d+/g)||[]).map(Number);if(nums.length<2){erros.push(t);return}
+    const dia=nums[0],lic=nums[1];const k=ds.findIndex((d,i)=>i>=idx&&+d.slice(8,10)===dia);
+    if(k<0){erros.push(t);return}idx=k+1;ok.push({data:ds[k],professor:tituloNome(m[1]),licaoNum:String(lic)})});
+  return {ok,erros};
+}
+function dlgImportarEscala(){
+  const d=$("#dlg");const ss=salasOrd();
+  d.innerHTML=`<div class="dlg-h"><div><h2>Importar escala</h2><div class="sub">Cole a escala como foi enviada no WhatsApp</div></div><button class="btn ghost sm" data-close>Fechar</button></div>
+  <div class="dlg-b"><div class="form"><label>Sala<select id="ieSala">${ss.map(s=>`<option value="${s.id}">${esc(s.nome)}</option>`).join("")}</select></label><label>Trimestre<select id="ieTri">${triOpts().map(t=>`<option value="${t}" ${t===st.tri?"selected":""}>${triLabel(t)}</option>`).join("")}</select></label>
+  <label class="full">Escala<textarea id="ieTxt" style="min-height:200px" placeholder="EDSON: DIA 4 LIÇÃO 1&#10;DIEGO: DIA 11 LIÇÃO 2&#10;…"></textarea><span class="hint">Uma linha por aula, no formato NOME: DIA X LIÇÃO Y. Os dias são encaixados nos domingos do trimestre, em ordem.</span></label></div>
+  <div style="display:flex;justify-content:flex-end"><button class="btn" data-act="ie-previa">Ver prévia</button></div><div id="iePrev"></div></div>`;
+  if(!d.open)d.showModal();
+}
+let iePend=null;
+function previaEscala(){
+  const sala=$("#ieSala").value,tri=$("#ieTri").value;const {ok,erros}=lerEscalaTexto($("#ieTxt").value,tri);iePend={sala,tri,ok};
+  const sub=ok.filter(x=>{const a=aulaDe(x.data,sala);return a&&a.professor&&a.professor!==x.professor}).length;
+  $("#iePrev").innerHTML=ok.length?`<div class="scroll" style="margin-top:12px"><table class="tbl"><thead><tr><th>Domingo</th><th>Professor(a)</th><th>Lição</th></tr></thead><tbody>${ok.map(x=>`<tr><td>${fmt(x.data)}</td><td>${esc(x.professor)}</td><td>${esc(x.licaoNum)}</td></tr>`).join("")}</tbody></table></div>
+  ${erros.length?`<p class="notice" style="margin-top:10px">Não entendi ${erros.length} ${erros.length===1?"linha":"linhas"}: ${erros.map(esc).join(" · ")}</p>`:""}
+  ${sub?`<p class="hint" style="margin:8px 0 0">${sub} ${sub===1?"domingo já tinha":"domingos já tinham"} outro professor e serão substituídos.</p>`:""}
+  <div style="display:flex;justify-content:flex-end;margin-top:10px"><button class="btn pri" data-act="ie-salvar">Salvar ${ok.length} aulas em ${esc(salaNome(sala))}</button></div>`:`<p class="empty" style="margin-top:10px">Nenhuma linha reconhecida. Use o formato NOME: DIA X LIÇÃO Y.</p>`;
+}
+async function salvarEscalaImportada(btn){
+  if(!iePend||!iePend.ok.length)return;btn.disabled=true;let n=0;
+  for(const x of iePend.ok){if(await gravar(()=>db.collection("ebd_aulas").doc(aulaId(x.data,iePend.sala)).set({data:x.data,salaId:iePend.sala,tri:iePend.tri,professor:x.professor,licaoNum:x.licaoNum,atualizadoEm:new Date().toISOString()},{merge:true})))n++;else break}
+  toast(`${n} aulas salvas na escala`);st.tri=iePend.tri;iePend=null;$("#dlg").close();render();
+}
+
 /* ---------- indicadores ---------- */
 function vIndicadores(){
   const ds=domingos(st.tri),ss=salasOrd(),h=hoje();
@@ -819,6 +852,9 @@ document.addEventListener("click",async ev=>{
   if(ds.aula){const [d,s]=ds.aula.split("|");if(!souAdmin&&!aulaDe(d,s))return;dlgAula(d,s);return}
   if(ds.rmAula){if(await confirmar("Remover esta aula da escala? O preparo e a presença dela também saem.","Remover")){if(await gravar(()=>db.collection("ebd_aulas").doc(ds.rmAula).delete(),"Aula removida"))$("#dlg").close()}return}
   if(ds.act==="copiar-escala"){copiar(textoEscala());return}
+  if(ds.act==="importar-escala"){dlgImportarEscala();return}
+  if(ds.act==="ie-previa"){previaEscala();return}
+  if(ds.act==="ie-salvar"){salvarEscalaImportada(t);return}
   if(ds.preparo){dlgPreparo(ds.preparo);return}
   if(ds.prepf){st.prepFiltro=ds.prepf;render();return}
   if(ds.act==="salvar-texto"){const tx=$("#prTexto").value;await gravar(()=>db.collection("ebd_aulas").doc(ds.id).update({"preparo.texto":tx,"preparo.atualizadoPor":meuEmail,"preparo.atualizadoEm":new Date().toISOString()}),"Roteiro salvo");return}
