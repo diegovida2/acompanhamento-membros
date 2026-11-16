@@ -413,7 +413,7 @@ function triSel(){return `<select data-tri aria-label="Trimestre" style="width:a
 function render(){
   if(!db)return;
   const app=$("#app");
-  const semSala=!salas.length&&view!=="salas"?`<div class="notice">Nenhuma sala cadastrada ainda. ${souAdmin?`<a href="#salas">Cadastre as salas</a> para montar a escala.`:"Peça ao administrador para cadastrar as salas."}</div>`:"";
+  const semSala=!salas.length&&view!=="salas"?`<div class="notice">Nenhuma sala cadastrada ainda. ${podeGerir()?`<a href="#salas">Cadastre as salas</a> para montar a escala.`:"Peça ao administrador para cadastrar as salas."}</div>`:"";
   if(view==="domingos")app.innerHTML=semSala+vDomingos();
   if(view==="dia")app.innerHTML=semSala+vDia();
   if(view==="escala")app.innerHTML=semSala+vEscala();
@@ -605,7 +605,7 @@ function abaPresenca(a){
   const vis=alunos.filter(x=>x.salaId===st.sala&&x.visitante).sort((p,q)=>(pres.has(q.id)-pres.has(p.id))||byNome(p,q));
   const linha=x=>{const on=pres.has(x.id);return `<button class="chk ${on?"on":""}" data-chk="${x.id}" aria-pressed="${on}"><span class="box">${on?"✓":""}</span><span class="t">${esc(x.nome)}</span>${x.visitante?`<span class="mini vis">Visitante${x.idade?" · "+esc(x.idade)+" anos":""}</span>`:""}</button>`};
   return `<div class="pres-top"><div class="count">${c.total} ${c.total===1?"presente":"presentes"}${c.vis?` <span class="hint">(${c.alunos} alunos + ${c.vis} visitantes)</span>`:""}</div><button class="btn pri" data-act="novo-visitante">+ Cadastrar visitante</button></div>
-  ${reg.length?`<div class="chks">${reg.map(linha).join("")}</div>`:`<div class="panel"><p class="empty">Nenhum aluno nesta sala. ${souAdmin?`Cadastre em <a href="#alunos">Alunos</a>, onde também dá para trazer as crianças do cadastro de membros.`:"Peça ao administrador para cadastrar os alunos."}</p></div>`}
+  ${reg.length?`<div class="chks">${reg.map(linha).join("")}</div>`:`<div class="panel"><p class="empty">Nenhum aluno nesta sala. ${podeGerir()?`Cadastre em <a href="#alunos">Alunos</a>, onde também dá para trazer as crianças do cadastro de membros.`:"Peça ao administrador para cadastrar os alunos."}</p></div>`}
   ${vis.length?`<h3 class="sec-t">Visitantes</h3><div class="chks">${vis.map(linha).join("")}</div>`:""}
   <p class="hint" style="margin-top:10px">Toque no nome de quem esteve presente. Salva na hora.</p>`;
 }
@@ -636,7 +636,7 @@ function abaResp(a){
   return `<form id="fResp" class="panel" style="display:grid;gap:14px">${a.professor?`<p class="sub" style="margin:0">Na escala: <b>${esc(a.professor)}</b>. Marque quem realmente ficou com as crianças.</p>`:`<p class="sub" style="margin:0">Marque quem ficou com as crianças neste domingo.</p>`}
   <div><h3 class="sec-t">Professores</h3><div class="opts">${[...extra,...profs,...outros].map(op).join("")||`<p class="empty">Nenhum professor cadastrado.</p>`}</div></div>
   <div><h3 class="sec-t">Ajudantes</h3><div class="opts">${ajs.map(op).join("")||`<p class="empty">Nenhum ajudante cadastrado.</p>`}</div></div>
-  ${souAdmin?`<p class="hint" style="margin:0">Professores e ajudantes são cadastrados em <a href="#salas">Salas e equipe</a>.</p>`:""}
+  ${podeGerir()?`<p class="hint" style="margin:0">Professores e ajudantes são cadastrados em <a href="#salas">Salas e equipe</a>.</p>`:""}
   <div style="display:flex;justify-content:flex-end"><button class="btn pri" type="submit">Salvar responsáveis</button></div></form>`;
 }
 function abaRegistro(){
@@ -668,6 +668,7 @@ function textoDia(){const a=aulaDe(st.dia,st.sala)||{},c=contaDia(a),r=a.resumo|
   if(r.tema||a.tema)L.push(`📖 Tema: ${r.tema||a.tema}`);if(r.versiculo)L.push(`✝️ Versículo: ${r.versiculo}`);
   L.push(`👧 Alunos presentes: ${c.alunos}`,`👋 Visitantes: ${c.vis}`);if((a.responsaveis||[]).length)L.push(`🙋 Responsáveis: ${a.responsaveis.join(", ")}`);
   return L.join(String.fromCharCode(10))}
+const podeGerir=()=>!!db; // todos com acesso à EBD (líderes, professores e administradores)
 const temIdades=sl=>sl.idadeMin!=null&&sl.idadeMin!==""&&sl.idadeMax!=null&&sl.idadeMax!=="";
 function salaPorIdade(i){if(i==null||isNaN(i))return null;return salasOrd().find(sl=>temIdades(sl)&&i>=+sl.idadeMin&&i<=+sl.idadeMax)||null}
 function idadeAluno(x){if(x.nascimento)return idadeDe(x.nascimento);if(x.idade!==""&&x.idade!=null&&!isNaN(+x.idade))return +x.idade;return null}
@@ -700,9 +701,9 @@ function dlgTrazer(){
 }
 function secEquipe(){
   const g=f=>equipe.filter(e=>(e.funcao||"professor")===f).sort(byNome);
-  const li=e=>`<li><div class="grow"><div class="t">${esc(e.nome)}</div></div>${souAdmin?`<button class="btn sm ghost danger" data-rm-equipe="${e.id}">Remover</button>`:""}</li>`;
+  const li=e=>`<li><div class="grow"><div class="t">${esc(e.nome)}</div></div>${podeGerir()?`<button class="btn sm ghost danger" data-rm-equipe="${e.id}">Remover</button>`:""}</li>`;
   return `<section class="panel" style="margin-top:14px"><h3>Equipe da EBD</h3><p class="sub" style="margin:-4px 0 10px">Professores e ajudantes que aparecem para seleção em “Professores responsáveis”.</p>
-  ${souAdmin?`<form id="fEquipe" class="form"><label>Nome<input name="nome" list="dl-eq" required autocomplete="off"><datalist id="dl-eq">${membrosDir.map(m=>`<option value="${esc(m.nome)}">`).join("")}</datalist></label><label>Função<select name="funcao"><option value="professor">Professor(a)</option><option value="ajudante">Ajudante</option></select></label><div style="align-self:end"><button class="btn pri" type="submit" style="width:100%">Adicionar à equipe</button></div></form>`:""}
+  ${podeGerir()?`<form id="fEquipe" class="form"><label>Nome<input name="nome" list="dl-eq" required autocomplete="off"><datalist id="dl-eq">${membrosDir.map(m=>`<option value="${esc(m.nome)}">`).join("")}</datalist></label><label>Função<select name="funcao"><option value="professor">Professor(a)</option><option value="ajudante">Ajudante</option></select></label><div style="align-self:end"><button class="btn pri" type="submit" style="width:100%">Adicionar à equipe</button></div></form>`:""}
   <div class="grid2"><div><h4>Professores</h4>${g("professor").length?`<ul class="list">${g("professor").map(li).join("")}</ul>`:`<p class="empty">Nenhum ainda.</p>`}</div><div><h4>Ajudantes</h4>${g("ajudante").length?`<ul class="list">${g("ajudante").map(li).join("")}</ul>`:`<p class="empty">Nenhum ainda.</p>`}</div></div></section>`;
 }
 
@@ -739,7 +740,7 @@ function vIndicadores(){
 
 /* ---------- alunos ---------- */
 function vAlunos(){
-  return `<div class="view-title"><div><h2>Alunos</h2><p class="sub">${alunos.filter(x=>!x.visitante).length} alunos e ${alunos.filter(x=>x.visitante).length} visitantes</p></div><div style="display:flex;gap:8px;flex-wrap:wrap">${souAdmin?`<button class="btn" data-act="trazer-criancas">Trazer crianças do cadastro</button><button class="btn" data-act="reorganizar">Reorganizar salas por idade</button>`:""}${triSel()}</div></div>
+  return `<div class="view-title"><div><h2>Alunos</h2><p class="sub">${alunos.filter(x=>!x.visitante).length} alunos e ${alunos.filter(x=>x.visitante).length} visitantes</p></div><div style="display:flex;gap:8px;flex-wrap:wrap">${podeGerir()?`<button class="btn" data-act="trazer-criancas">Trazer crianças do cadastro</button><button class="btn" data-act="reorganizar">Reorganizar salas por idade</button>`:""}${triSel()}</div></div>
   <div class="toolbar"><input type="search" id="alBusca" placeholder="Buscar por nome" value="${esc(st.alBusca)}" aria-label="Buscar aluno">
   <select data-alsala aria-label="Sala" style="width:auto"><option value="">Todas as salas</option>${salasOrd().map(s=>`<option value="${s.id}" ${st.alSala===s.id?"selected":""}>${esc(s.nome)}</option>`).join("")}</select></div><div id="alLista"></div>`;
 }
@@ -770,8 +771,8 @@ function dlgAluno(id){
 function vSalas(){
   const ss=salasOrd();
   return `<div class="view-title"><div><h2>Salas e equipe</h2><p class="sub">Turmas da Escola Bíblica Dominical</p></div></div>
-  ${souAdmin?`<section class="panel"><h3>Nova sala</h3><form id="fSala" class="form"><label>Nome da sala<input name="nome" required placeholder="Ex.: Juniores"></label><label>Idade mínima<input name="idadeMin" type="number" min="0" max="120" inputmode="numeric" placeholder="Ex.: 1"></label><label>Idade máxima<input name="idadeMax" type="number" min="0" max="120" inputmode="numeric" placeholder="Ex.: 5"></label><label>Ordem<input name="ordem" type="number" min="1" value="${ss.length+1}"></label><div style="align-self:end"><button class="btn pri" type="submit" style="width:100%">Adicionar sala</button></div></form></section>`:""}
-  <section class="panel" style="margin-top:14px">${ss.length?`<ul class="list">${ss.map(s=>`<li><div class="grow"><div class="t">${esc(s.nome)}</div><div class="m">${faixaTxt(s)} · ${alunos.filter(x=>x.salaId===s.id&&!x.visitante).length} alunos</div></div>${souAdmin?`<button class="btn sm" data-editar-sala="${s.id}">Editar</button><button class="btn sm ghost danger" data-rm-sala="${s.id}">Remover</button>`:""}</li>`).join("")}</ul>`:`<p class="empty">Nenhuma sala cadastrada.</p>`}</section>${secEquipe()}`;
+  ${podeGerir()?`<section class="panel"><h3>Nova sala</h3><form id="fSala" class="form"><label>Nome da sala<input name="nome" required placeholder="Ex.: Juniores"></label><label>Idade mínima<input name="idadeMin" type="number" min="0" max="120" inputmode="numeric" placeholder="Ex.: 1"></label><label>Idade máxima<input name="idadeMax" type="number" min="0" max="120" inputmode="numeric" placeholder="Ex.: 5"></label><label>Ordem<input name="ordem" type="number" min="1" value="${ss.length+1}"></label><div style="align-self:end"><button class="btn pri" type="submit" style="width:100%">Adicionar sala</button></div></form></section>`:""}
+  <section class="panel" style="margin-top:14px">${ss.length?`<ul class="list">${ss.map(s=>`<li><div class="grow"><div class="t">${esc(s.nome)}</div><div class="m">${faixaTxt(s)} · ${alunos.filter(x=>x.salaId===s.id&&!x.visitante).length} alunos</div></div>${podeGerir()?`<button class="btn sm" data-editar-sala="${s.id}">Editar</button>`:""}${souAdmin?`<button class="btn sm ghost danger" data-rm-sala="${s.id}">Remover</button>`:""}</li>`).join("")}</ul>`:`<p class="empty">Nenhuma sala cadastrada.</p>`}</section>${secEquipe()}`;
 }
 
 /* ---------- administração: quem acessa a EBD ---------- */
