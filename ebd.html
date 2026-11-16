@@ -679,7 +679,7 @@ function dlgSala(id){const sl=salas.find(x=>x.id===id);if(!sl)return;const d=$("
     if(await gravar(()=>db.collection("ebd_salas").doc(id).update({nome:f.elements.nome.value.trim(),idadeMin:fx.idadeMin,idadeMax:fx.idadeMax,ordem:+f.elements.ordem.value||99}),"Sala atualizada"))d.close()});
   d.showModal()}
 async function reorganizar(){
-  const mov=alunos.map(x=>({x,i:idadeAluno(x)})).map(o=>({...o,sl:salaPorIdade(o.i)})).filter(o=>o.sl&&o.sl.id!==o.x.salaId);
+  const mov=alunos.map(x=>({x,i:idadeAluno(x)})).map(o=>({...o,sl:salaPorIdade(o.i)})).filter(o=>o.sl&&o.sl.id!==o.x.salaId&&!o.x.salaFixa);
   if(!mov.length){toast("Todas as crianças já estão na sala da idade delas.");return}
   if(!(await confirmar(`Mover ${mov.length} ${mov.length===1?"criança":"crianças"} para a sala da idade? ${mov.slice(0,6).map(o=>o.x.nome.split(" ")[0]+" → "+o.sl.nome).join(", ")}${mov.length>6?"…":""}`,"Mover",false)))return;
   let n=0;for(const o of mov){if(await gravar(()=>db.collection("ebd_alunos").doc(o.x.id).update({salaId:o.sl.id})))n++;else break}
@@ -748,7 +748,7 @@ function lAlunos(){
   const doTri=aulas.filter(a=>a.tri===st.tri&&a.presentes);
   const arr=alunos.filter(x=>(!st.alSala||x.salaId===st.alSala)&&(!q||norm(x.nome).includes(q))).sort(byNome);
   el.innerHTML=arr.length?`<div class="rows">${arr.map(x=>{const aul=doTri.filter(a=>a.salaId===x.salaId),p=doTri.filter(a=>a.presentes.includes(x.id)).length;const r=(x.revistas||{})[st.tri]||{};
-    return `<button class="row" data-ver-aluno="${x.id}"><span class="t">${esc(x.nome)}${x.visitante?` <span class="mini vis">Visitante</span>`:""}</span><span class="chip ${r.pago?"c-ok":r.revista?"c-pend":"c-off"}"><span class="dot"></span>${r.pago?"Revista paga":r.revista?"Revista não paga":"Sem revista"}</span><span class="m">${esc(salaNome(x.salaId))} · ${p} ${p===1?"presença":"presenças"} em ${aul.length} ${aul.length===1?"aula":"aulas"} no trimestre${aul.length?" ("+Math.round(p/aul.length*100)+"%)":""}</span></button>`}).join("")}</div>`:`<div class="panel"><p class="empty">Nenhum aluno encontrado.</p></div>`;
+    return `<button class="row" data-ver-aluno="${x.id}"><span class="t">${esc(x.nome)}${x.visitante?` <span class="mini vis">Visitante</span>`:""}</span><span class="chip ${r.pago?"c-ok":r.revista?"c-pend":"c-off"}"><span class="dot"></span>${r.pago?"Revista paga":r.revista?"Revista não paga":"Sem revista"}</span><span class="m">${esc(salaNome(x.salaId))}${x.salaFixa?" (fixada)":""} · ${p} ${p===1?"presença":"presenças"} em ${aul.length} ${aul.length===1?"aula":"aulas"} no trimestre${aul.length?" ("+Math.round(p/aul.length*100)+"%)":""}</span></button>`}).join("")}</div>`:`<div class="panel"><p class="empty">Nenhum aluno encontrado.</p></div>`;
 }
 function dlgAluno(id){
   const x=alunos.find(a=>a.id===id);if(!x)return;const d=$("#dlg");
@@ -758,9 +758,10 @@ function dlgAluno(id){
     <label>WhatsApp<input name="whatsapp" inputmode="tel" value="${esc(x.whatsapp)}"></label>
     <label>Nascimento<input type="date" name="nascimento" value="${esc(x.nascimento)}"></label>
     <label>Situação<select name="vis"><option value="">Aluno(a)</option><option value="1" ${x.visitante?"selected":""}>Visitante</option></select></label>
+    <label class="check full"><input type="checkbox" name="fixa" ${x.salaFixa?"checked":""}> Manter nesta sala (o botão “Reorganizar salas por idade” não move esta criança)</label>
     ${x.visitante?`<label>Responsável<input name="responsavel" value="${esc(x.responsavel)}"></label><label>Telefone do responsável<input name="responsavelTel" value="${esc(x.responsavelTel)}"></label>`:""}
   </div></div><div class="dlg-f"><button type="button" class="btn danger ghost" data-rm-aluno="${x.id}" style="margin-right:auto">Excluir</button><button class="btn pri" type="submit">Salvar</button></div></form>`;
-  d.querySelector("#fAluno").addEventListener("submit",async ev=>{ev.preventDefault();const f=ev.target;const v={nome:f.elements.nome.value.trim(),salaId:f.elements.salaId.value,whatsapp:f.elements.whatsapp.value.trim(),nascimento:f.elements.nascimento.value,visitante:f.elements.vis.value==="1"};if(f.elements.responsavel){v.responsavel=f.elements.responsavel.value.trim();v.responsavelTel=f.elements.responsavelTel.value.trim()}if(!v.nome)return;
+  d.querySelector("#fAluno").addEventListener("submit",async ev=>{ev.preventDefault();const f=ev.target;const v={nome:f.elements.nome.value.trim(),salaId:f.elements.salaId.value,whatsapp:f.elements.whatsapp.value.trim(),nascimento:f.elements.nascimento.value,visitante:f.elements.vis.value==="1"};{const sp=salaPorIdade(idadeAluno({...x,...v}));v.salaFixa=f.elements.fixa.checked||(!!sp&&sp.id!==v.salaId&&v.salaId!==x.salaId)}if(f.elements.responsavel){v.responsavel=f.elements.responsavel.value.trim();v.responsavelTel=f.elements.responsavelTel.value.trim()}if(!v.nome)return;
     if(await gravar(()=>db.collection("ebd_alunos").doc(id).update(v),"Aluno atualizado"))d.close()});
   if(!d.open)d.showModal();
 }
