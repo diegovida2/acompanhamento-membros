@@ -273,6 +273,65 @@ h4{margin:0 0 6px;font-size:.95rem}
 .bar-col.fut .bar-l{opacity:.5}
 .bar-v{font-size:.78rem;font-weight:700}
 .bar-l{font-size:.72rem;color:var(--muted)}
+.doms{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.dom{display:flex;gap:12px;align-items:center;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px;cursor:pointer;font:inherit;color:inherit}
+.dom:hover{border-color:var(--brand)}
+.dom.prox{border:2px solid var(--brand)}
+.dom.pend{border-color:color-mix(in srgb,var(--cuid) 55%,var(--line))}
+.dom-d{display:grid;place-items:center;width:52px;height:56px;border-radius:12px;background:var(--brand);color:var(--brand-ink);flex:none;line-height:1}
+.dom-d b{font-family:"Bricolage Grotesque",sans-serif;font-size:1.45rem}
+.dom-d span{font-size:.7rem;text-transform:uppercase;letter-spacing:.05em}
+.dom-i{display:grid;gap:3px;min-width:0}
+.dom-i .t{font-weight:700}
+.dom-i .m{font-size:.82rem;color:var(--muted)}
+.dom-chips{display:flex;flex-wrap:wrap;gap:4px}
+.mini{font-size:.72rem;font-weight:600;padding:1px 8px;border-radius:999px;background:var(--surface2);color:var(--muted);white-space:nowrap}
+.mini.ok{background:color-mix(in srgb,var(--part) 15%,var(--surface));color:var(--part)}
+.mini.vis{background:color-mix(in srgb,var(--conn) 15%,var(--surface));color:var(--conn)}
+.mes-t{margin:18px 0 8px;font-size:1.05rem}
+.abas{display:flex;gap:4px;overflow-x:auto;border-bottom:1px solid var(--line);margin-bottom:14px}
+.abas button{border:0;background:none;padding:10px 14px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap;font-size:.95rem}
+.abas button[aria-selected="true"]{color:var(--brand);border-bottom-color:var(--brand)}
+.okk{color:var(--part)}
+.ok-n{background:color-mix(in srgb,var(--part) 12%,var(--surface));border-color:color-mix(in srgb,var(--part) 40%,var(--line))}
+.pres-top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.pres-top .count{font-weight:700;font-size:1.05rem}
+.chks{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px}
+.chk{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);cursor:pointer;text-align:left;font:inherit;color:inherit;min-height:52px}
+.chk .t{font-weight:600;flex:1;min-width:0}
+.chk.on{border-color:var(--part);background:color-mix(in srgb,var(--part) 12%,var(--surface))}
+.chk.on .box{background:var(--part);border-color:var(--part)}
+.sec-t{font-size:.95rem;margin:16px 0 8px;color:var(--muted)}
+.lbl2{display:grid;gap:4px;font-size:.88rem;font-weight:600;color:var(--muted)}
+.opts{display:flex;flex-wrap:wrap;gap:8px}
+.opt{display:inline-flex;align-items:center;gap:8px;padding:9px 14px;border:1px solid var(--line);border-radius:999px;cursor:pointer;font-weight:600;background:var(--surface)}
+.opt input{width:auto;margin:0}
+.opt.on{border-color:var(--brand);background:color-mix(in srgb,var(--brand) 10%,var(--surface))}
+.fotos{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.foto{position:relative;margin:0;aspect-ratio:1;border-radius:12px;overflow:hidden;background:var(--surface2)}
+.foto img{width:100%;height:100%;object-fit:cover;cursor:zoom-in;display:block}
+.foto-x{position:absolute;top:6px;right:6px;width:30px;height:30px;border-radius:50%;border:0;background:rgb(0 0 0/.55);color:#fff;cursor:pointer}
+.pd-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.pd-grid h3{font-size:1.02rem;margin-bottom:10px}
+.pd-n{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.pd-n div{background:var(--surface2);border-radius:10px;padding:10px;text-align:center}
+.pd-n b{display:block;font-family:"Bricolage Grotesque",sans-serif;font-size:1.7rem}
+.pd-n span{font-size:.78rem;color:var(--muted)}
+.cv{color:var(--conn)}
+.hb{display:grid;grid-template-columns:80px 1fr 28px;gap:8px;align-items:center;font-size:.88rem;margin:6px 0}
+.hb i{display:block;height:12px;border-radius:6px;min-width:2px}
+.ha{background:var(--brand)} .hv{background:var(--conn)}
+.hb b{text-align:right}
+.plain{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.chk-l li{color:var(--muted)} .chk-l li.ok .lnk{color:var(--part)}
+.chk-l .lnk{text-decoration:none;font-weight:600;color:var(--muted)}
+.stack{display:flex;flex-direction:column;width:70%;max-width:42px;border-radius:6px 6px 2px 2px;overflow:hidden}
+.stack .sa{background:var(--brand)} .stack .sv{background:var(--conn)}
+.leg{font-size:.8rem;color:var(--muted);display:flex;align-items:center;gap:6px}
+.lg{display:inline-block;width:10px;height:10px;border-radius:3px}
+.lg.a{background:var(--brand)} .lg.v{background:var(--conn);margin-left:8px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-top:12px}
+
 </style>
 </head>
 <body>
@@ -284,12 +343,12 @@ h4{margin:0 0 6px;font-size:.95rem}
       <p id="usr"></p>
     </div>
     <nav class="tabs" aria-label="Seções">
+      <a href="#domingos">Domingos</a>
       <a href="#escala">Escala</a>
       <a href="#preparo">Preparo</a>
-      <a href="#presenca">Presença</a>
       <a href="#indicadores">Indicadores</a>
       <a href="#alunos">Alunos</a>
-      <a href="#salas">Salas</a>
+      <a href="#salas">Salas e equipe</a>
     </nav>
   </div>
 </header>
@@ -307,8 +366,8 @@ const MAX_ARQ=700*1024;
 let db=null,meuEmail="",meuNome="",meuId="",souAdmin=false;
 let salas=[],aulas=[],alunos=[],membrosNomes=[],membrosDir=[];
 const loaded={s:false,a:false,l:false};
-let view="escala";
-const st={tri:triAtual(),prepFiltro:"proximas",prepProf:"",presData:"",presSala:"",presBusca:"",pres:null,alBusca:"",alSala:""};
+let view="domingos";
+const st={sala:"",dia:"",diaAba:"presenca",periodo:"mes",ref:new Date().toISOString().slice(0,7),resDirty:false,respDirty:false,tri:triAtual(),prepFiltro:"proximas",prepProf:"",presData:"",presSala:"",presBusca:"",pres:null,alBusca:"",alSala:""};
 
 /* ---------- utilidades ---------- */
 const $=s=>document.querySelector(s);
@@ -346,15 +405,17 @@ function baixarBlob(blob,nome){const u=URL.createObjectURL(blob);const a=documen
 async function copiar(t){try{await navigator.clipboard.writeText(t);toast("Copiado")}catch(_){const ta=document.createElement("textarea");ta.value=t;ta.style.position="fixed";ta.style.opacity="0";document.body.appendChild(ta);ta.select();try{document.execCommand("copy");toast("Copiado")}catch(e){toast("Não foi possível copiar.")}ta.remove()}}
 
 /* ---------- roteamento ---------- */
-const VIEWS=["escala","preparo","presenca","indicadores","alunos","salas"];
-function route(){const h=(location.hash||"").slice(1);view=VIEWS.includes(h)?h:"escala";
-  document.querySelectorAll(".tabs a").forEach(a=>{if(a.getAttribute("href")==="#"+view)a.setAttribute("aria-current","page");else a.removeAttribute("aria-current")});
+const VIEWS=["domingos","dia","escala","preparo","presenca","indicadores","alunos","salas"];
+function route(){const h=(location.hash||"").slice(1);view=VIEWS.includes(h)?h:"domingos";if(view==="dia"&&!st.dia)view="domingos";st.resDirty=false;st.respDirty=false;
+  document.querySelectorAll(".tabs a").forEach(a=>{if(a.getAttribute("href")==="#"+(view==="dia"?"domingos":view))a.setAttribute("aria-current","page");else a.removeAttribute("aria-current")});
   render();window.scrollTo(0,0)}
 function triSel(){return `<select data-tri aria-label="Trimestre" style="width:auto">${triOpts().map(t=>`<option value="${t}" ${t===st.tri?"selected":""}>${triLabel(t)}</option>`).join("")}</select>`}
 function render(){
   if(!db)return;
   const app=$("#app");
   const semSala=!salas.length&&view!=="salas"?`<div class="notice">Nenhuma sala cadastrada ainda. ${souAdmin?`<a href="#salas">Cadastre as salas</a> para montar a escala.`:"Peça ao administrador para cadastrar as salas."}</div>`:"";
+  if(view==="domingos")app.innerHTML=semSala+vDomingos();
+  if(view==="dia")app.innerHTML=semSala+vDia();
   if(view==="escala")app.innerHTML=semSala+vEscala();
   if(view==="preparo")app.innerHTML=semSala+vPreparo();
   if(view==="presenca"){app.innerHTML=semSala+vPresenca();lPresenca()}
@@ -373,7 +434,7 @@ function vEscala(){
   ${ss.length?`<div class="scroll rows" style="padding:0"><table class="tbl esc"><thead><tr><th>Domingo</th>${ss.map(s=>`<th>${esc(s.nome)}</th>`).join("")}</tr></thead><tbody>${ds.map(d=>`<tr class="${d<hoje()?"passado":""}"><td><b>${fmtC(d)}</b>${d===proxDomingo()?`<div class="hint">próximo</div>`:""}</td>${ss.map(s=>`<td>${cel(d,s)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`:""}`;
 }
 function proxDomingo(){const d=new Date();while(d.getDay()!==0)d.setDate(d.getDate()+1);return iso(d)}
-function profsConhecidos(){return [...new Set([...aulas.map(a=>a.professor).filter(Boolean),...membrosNomes])].sort((a,b)=>a.localeCompare(b,"pt-BR"))}
+function profsConhecidos(){return [...new Set([...equipe.map(e=>e.nome),...aulas.map(a=>a.professor).filter(Boolean),...membrosNomes])].sort((a,b)=>a.localeCompare(b,"pt-BR"))}
 function dlgAula(data,salaId){
   const a=aulaDe(data,salaId)||{};const d=$("#dlg");const ro=souAdmin?"":"disabled";
   d.innerHTML=`<form id="faula"><div class="dlg-h"><div><h2>${fmt(data)} · ${esc(salaNome(salaId))}</h2><div class="sub">Escala da aula</div></div><button type="button" class="btn ghost sm" data-close>Fechar</button></div>
@@ -436,7 +497,9 @@ async function dlgPreparo(id){
   if(!d.open)d.showModal();
 }
 function comprimirImagem(file){return new Promise((res,rej)=>{const img=new Image();const u=URL.createObjectURL(file);img.onload=()=>{URL.revokeObjectURL(u);let w=img.naturalWidth,h=img.naturalHeight;const m=1600;if(w>m||h>m){const r=Math.min(m/w,m/h);w=Math.round(w*r);h=Math.round(h*r)}
-  const c=document.createElement("canvas");c.width=w;c.height=h;c.getContext("2d").drawImage(img,0,0,w,h);let q=0.82,out=c.toDataURL("image/jpeg",q);while(out.length>MAX_ARQ*1.33&&q>0.35){q-=0.12;out=c.toDataURL("image/jpeg",q)}res(out)};img.onerror=()=>{URL.revokeObjectURL(u);rej(new Error("img"))};img.src=u})}
+  const c=document.createElement("canvas");const lim=MAX_ARQ*1.33;let out="";
+  for(let t=0;t<6;t++){c.width=w;c.height=h;c.getContext("2d").drawImage(img,0,0,w,h);let q=0.82;out=c.toDataURL("image/jpeg",q);while(out.length>lim&&q>0.45){q-=0.12;out=c.toDataURL("image/jpeg",q)}if(out.length<=lim)break;w=Math.round(w*0.75);h=Math.round(h*0.75)}
+  res(out)};img.onerror=()=>{URL.revokeObjectURL(u);rej(new Error("img"))};img.src=u})}
 const lerDataUrl=f=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(f)});
 async function enviarArquivos(aulaIdV,files){
   const box=$("#prUp");const a=aulas.find(x=>x.id===aulaIdV);if(!a)return;
@@ -502,6 +565,128 @@ async function salvarPresenca(){
 }
 async function novoAluno(dados){const ref=db.collection("ebd_alunos").doc();const ok=await gravar(()=>ref.set({...dados,criadoEm:new Date().toISOString(),criadoPor:meuEmail}));return ok?ref.id:null}
 
+/* ---------- domingos: o dia a dia da EBD ---------- */
+const MESES=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+let equipe=[];
+const cacheFotos={};
+const alunoPorId=id=>alunos.find(x=>x.id===id);
+function domingosDe(per,ref){const out=[];const y=+ref.slice(0,4);const m0=per==="ano"?0:+ref.slice(5,7)-1,m1=per==="ano"?11:m0;const d=new Date(y,m0,1);while(d.getDay()!==0)d.setDate(d.getDate()+1);while(d.getFullYear()===y&&d.getMonth()<=m1){out.push(iso(d));d.setDate(d.getDate()+7)}return out}
+function contaDia(a){const pres=(a&&a.presentes)||[];let vis=0;pres.forEach(id=>{const x=alunoPorId(id);if(x&&x.visitante)vis++});return {alunos:pres.length-vis,vis,total:pres.length}}
+function garantirSala(){const ss=salasOrd();if(!st.sala||!salas.some(s=>s.id===st.sala))st.sala=ss[0]?ss[0].id:""}
+const salaSel=()=>salas.length?`<select data-salasel aria-label="Sala" style="width:auto">${salasOrd().map(s=>`<option value="${s.id}" ${s.id===st.sala?"selected":""}>${esc(s.nome)}</option>`).join("")}</select>`:"";
+const diaLongo=d=>`Domingo, ${+d.slice(8,10)} de ${MESES[+d.slice(5,7)-1].toLowerCase()} de ${d.slice(0,4)}`;
+async function salvarDia(campos,ok){return gravar(()=>db.collection("ebd_aulas").doc(aulaId(st.dia,st.sala)).set({data:st.dia,salaId:st.sala,tri:triAtual(dt(st.dia)),...campos},{merge:true}),ok)}
+function grafMes(ds){const vals=ds.map(d=>({d,...contaDia(aulaDe(d,st.sala))}));if(!vals.some(v=>v.total))return "";const max=Math.max(...vals.map(v=>v.total),1);
+  return `<section class="panel" style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px"><h3 style="margin:0">Presença no mês</h3><span class="leg"><i class="lg a"></i>Alunos <i class="lg v"></i>Visitantes</span></div>
+  <div class="bars" role="img" aria-label="Presentes por domingo">${vals.map(v=>`<div class="bar-col" title="${fmt(v.d)}: ${v.alunos} alunos e ${v.vis} visitantes"><span class="bar-v">${v.total||""}</span><span class="stack" style="height:${v.total/max*100}%"><span class="sv" style="flex:${v.vis}"></span><span class="sa" style="flex:${v.alunos}"></span></span><span class="bar-l">${fmtC(v.d)}</span></div>`).join("")}</div></section>`}
+function vDomingos(){
+  garantirSala();const ds=domingosDe(st.periodo,st.ref),h=hoje(),px=proxDomingo();
+  const tit=st.periodo==="ano"?st.ref.slice(0,4):MESES[+st.ref.slice(5,7)-1]+" de "+st.ref.slice(0,4);
+  const card=d=>{const a=aulaDe(d,st.sala),c=contaDia(a),r=a&&a.resumo&&(a.resumo.tema||a.resumo.versiculo),resp=a&&(a.responsaveis||[]).length,fot=(a&&a.fotosQtd)||0,feito=c.total>0;
+    return `<button class="dom ${d===px?"prox":""} ${d<h&&!feito?"pend":""}" data-dia="${d}"><span class="dom-d"><b>${d.slice(8,10)}</b><span>${MESES[+d.slice(5,7)-1].slice(0,3)}</span></span><span class="dom-i"><span class="t">${d===h?"Hoje":d===px?"Próximo domingo":fmt(d)}</span><span class="m">${a&&a.professor?"Escala: "+esc(a.professor):"Sem professor escalado"}</span><span class="dom-chips"><span class="mini ${feito?"ok":""}">${feito?`${c.alunos} ${c.alunos===1?"aluno":"alunos"}${c.vis?" · "+c.vis+" visit.":""}`:"Chamada"}</span><span class="mini ${r?"ok":""}">Resumo</span><span class="mini ${resp?"ok":""}">Responsáveis</span><span class="mini ${fot?"ok":""}">${fot?fot+" fotos":"Fotos"}</span></span></span></button>`};
+  const corpo=st.periodo==="ano"?[...Array(12).keys()].map(m=>{const dm=ds.filter(d=>+d.slice(5,7)===m+1);return `<h3 class="mes-t">${MESES[m]}</h3><div class="doms">${dm.map(card).join("")}</div>`}).join(""):`<div class="doms">${ds.map(card).join("")}</div>`;
+  return `<div class="view-title"><div><h2>Domingos</h2><p class="sub">Toque no domingo para fazer a chamada e o registro da aula</p></div><div class="mes-nav"><button class="btn sm" data-ref="-1" aria-label="Anterior">‹</button><b>${tit}</b><button class="btn sm" data-ref="1" aria-label="Próximo">›</button></div></div>
+  <div class="toolbar">${salaSel()}<div class="seg" role="group" aria-label="Período"><button data-per="mes" aria-pressed="${st.periodo==="mes"}">Mês</button><button data-per="ano" aria-pressed="${st.periodo==="ano"}">Ano</button></div></div>
+  ${st.periodo==="mes"?grafMes(ds):""}${corpo}`;
+}
+const ABAS=[["presenca","Presença"],["resumo","Resumo da aula"],["responsaveis","Professores responsáveis"],["registro","Registro do dia"],["painel","Painel do dia"]];
+function statusAbas(a){const c=contaDia(a),r=a.resumo||{};return {presenca:c.total>0,resumo:!!(r.tema||r.versiculo),responsaveis:(a.responsaveis||[]).length>0,registro:(a.fotosQtd||0)>0}}
+function vDia(){
+  garantirSala();const a=aulaDe(st.dia,st.sala)||{},stt=statusAbas(a),completo=stt.presenca&&stt.resumo&&stt.responsaveis&&stt.registro;
+  return `<div class="view-title"><div><a href="#domingos" class="lnk">‹ Domingos</a><h2 style="margin-top:4px">${diaLongo(st.dia)}</h2><p class="sub">${a.professor?"Na escala: "+esc(a.professor)+(a.licao?" · "+esc(a.licao):""):"Sem professor escalado"}</p></div>${salaSel()}</div>
+  ${completo&&st.diaAba!=="painel"?`<div class="notice ok-n">Registro do dia completo. <button class="lnk" data-aba="painel">Ver o painel do dia</button></div>`:""}
+  <div class="abas" role="tablist">${ABAS.map(([k,t])=>`<button role="tab" data-aba="${k}" aria-selected="${st.diaAba===k}">${stt[k]?'<span class="okk">✓</span> ':""}${t}</button>`).join("")}</div>
+  <div id="abaC">${conteudoAba(a)}</div>`;
+}
+function conteudoAba(a){if(st.diaAba==="resumo")return abaResumo(a);if(st.diaAba==="responsaveis")return abaResp(a);if(st.diaAba==="registro")return abaRegistro(a);if(st.diaAba==="painel")return abaPainel(a);return abaPresenca(a)}
+function abaPresenca(a){
+  const pres=new Set(a.presentes||[]),c=contaDia(a);
+  const reg=alunos.filter(x=>x.salaId===st.sala&&!x.visitante).sort(byNome);
+  const vis=alunos.filter(x=>x.salaId===st.sala&&x.visitante).sort((p,q)=>(pres.has(q.id)-pres.has(p.id))||byNome(p,q));
+  const linha=x=>{const on=pres.has(x.id);return `<button class="chk ${on?"on":""}" data-chk="${x.id}" aria-pressed="${on}"><span class="box">${on?"✓":""}</span><span class="t">${esc(x.nome)}</span>${x.visitante?`<span class="mini vis">Visitante${x.idade?" · "+esc(x.idade)+" anos":""}</span>`:""}</button>`};
+  return `<div class="pres-top"><div class="count">${c.total} ${c.total===1?"presente":"presentes"}${c.vis?` <span class="hint">(${c.alunos} alunos + ${c.vis} visitantes)</span>`:""}</div><button class="btn pri" data-act="novo-visitante">+ Cadastrar visitante</button></div>
+  ${reg.length?`<div class="chks">${reg.map(linha).join("")}</div>`:`<div class="panel"><p class="empty">Nenhum aluno nesta sala. ${souAdmin?`Cadastre em <a href="#alunos">Alunos</a>, onde também dá para trazer as crianças do cadastro de membros.`:"Peça ao administrador para cadastrar os alunos."}</p></div>`}
+  ${vis.length?`<h3 class="sec-t">Visitantes</h3><div class="chks">${vis.map(linha).join("")}</div>`:""}
+  <p class="hint" style="margin-top:10px">Toque no nome de quem esteve presente. Salva na hora.</p>`;
+}
+function dlgVisitante(){
+  const d=$("#dlg");
+  d.innerHTML=`<form id="fVis"><div class="dlg-h"><div><h2>Cadastrar visitante</h2><div class="sub">${esc(salaNome(st.sala))} · ${fmt(st.dia)}</div></div><button type="button" class="btn ghost sm" data-close>Fechar</button></div>
+  <div class="dlg-b"><div class="form"><label class="full">Nome<input name="nome" required autocomplete="off"></label><label>Idade<input name="idade" type="number" min="0" max="120" inputmode="numeric"></label><label>Responsável<input name="responsavel" autocomplete="off"></label><label class="full">Telefone do responsável<input name="tel" inputmode="tel" placeholder="(11) 90000-0000"></label></div></div>
+  <div class="dlg-f"><button class="btn pri" type="submit">Cadastrar e marcar presente</button></div></form>`;
+  d.querySelector("#fVis").addEventListener("submit",async ev=>{ev.preventDefault();const E=ev.target.elements;const nome=E.nome.value.trim();if(!nome)return;
+    const ref=db.collection("ebd_alunos").doc();
+    const ok=await gravar(()=>ref.set({nome,idade:E.idade.value,responsavel:E.responsavel.value.trim(),responsavelTel:E.tel.value.trim(),visitante:true,salaId:st.sala,primeiraVisita:st.dia,origem:"visitante",criadoEm:new Date().toISOString(),criadoPor:meuEmail}));
+    if(ok){const a=aulaDe(st.dia,st.sala)||{};await salvarDia({presentes:[...(a.presentes||[]),ref.id]},"Visitante cadastrado e marcado presente");d.close()}});
+  d.showModal();setTimeout(()=>d.querySelector("input").focus(),30);
+}
+function abaResumo(a){const r=a.resumo||{};return `<form id="fRes" class="panel" style="display:grid;gap:12px">
+  <label class="lbl2">Tema da aula<input name="tema" value="${esc(r.tema||a.tema||"")}" placeholder="Ex.: Davi e Golias"></label>
+  <label class="lbl2">Versículo<input name="versiculo" value="${esc(r.versiculo||"")}" placeholder="Ex.: 1 Samuel 17:45"></label>
+  <label class="lbl2">Como foi a aula <span class="hint">opcional</span><textarea name="texto" placeholder="Atividades, dinâmica, pedidos de oração…">${esc(r.texto||"")}</textarea></label>
+  <div style="display:flex;justify-content:flex-end"><button class="btn pri" type="submit">Salvar resumo</button></div></form>`}
+function abaResp(a){
+  const sel=new Set(a.responsaveis||[]);
+  const profs=equipe.filter(e=>e.funcao!=="ajudante").sort(byNome),ajs=equipe.filter(e=>e.funcao==="ajudante").sort(byNome);
+  const extra=a.professor&&!equipe.some(e=>norm(e.nome)===norm(a.professor))?[{nome:a.professor}]:[];
+  const outros=[...sel].filter(n=>!equipe.some(e=>e.nome===n)&&!extra.some(e=>e.nome===n)).map(n=>({nome:n}));
+  const op=e=>`<label class="opt ${sel.has(e.nome)?"on":""}"><input type="checkbox" name="resp" value="${esc(e.nome)}" ${sel.has(e.nome)?"checked":""}><span>${esc(e.nome)}</span>${a.professor&&norm(a.professor)===norm(e.nome)?`<span class="mini">na escala</span>`:""}</label>`;
+  return `<form id="fResp" class="panel" style="display:grid;gap:14px">${a.professor?`<p class="sub" style="margin:0">Na escala: <b>${esc(a.professor)}</b>. Marque quem realmente ficou com as crianças.</p>`:`<p class="sub" style="margin:0">Marque quem ficou com as crianças neste domingo.</p>`}
+  <div><h3 class="sec-t">Professores</h3><div class="opts">${[...extra,...profs,...outros].map(op).join("")||`<p class="empty">Nenhum professor cadastrado.</p>`}</div></div>
+  <div><h3 class="sec-t">Ajudantes</h3><div class="opts">${ajs.map(op).join("")||`<p class="empty">Nenhum ajudante cadastrado.</p>`}</div></div>
+  ${souAdmin?`<p class="hint" style="margin:0">Professores e ajudantes são cadastrados em <a href="#salas">Salas e equipe</a>.</p>`:""}
+  <div style="display:flex;justify-content:flex-end"><button class="btn pri" type="submit">Salvar responsáveis</button></div></form>`;
+}
+function abaRegistro(){
+  const id=aulaId(st.dia,st.sala),fotos=cacheFotos[id];if(!fotos)carregarFotos(id);
+  return `<div class="panel" style="display:grid;gap:12px"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><div><h3 style="margin:0">Fotos do dia</h3><p class="sub" style="margin:0">Crianças e professores. Ficam guardadas para o álbum.</p></div><label class="btn pri">+ Enviar fotos<input type="file" id="fFotos" accept="image/*" multiple hidden></label></div><div id="fotoUp"></div>
+  ${fotos?(fotos.length?`<div class="fotos">${fotos.map(f=>`<figure class="foto"><img src="${f.dataUrl}" alt="Foto da EBD de ${fmt(st.dia)}" loading="lazy" data-ver-foto="${f.id}"><button class="foto-x" data-rm-foto="${f.id}" aria-label="Excluir foto">✕</button></figure>`).join("")}</div>`:`<p class="empty">Nenhuma foto ainda.</p>`):`<p class="empty">Carregando fotos…</p>`}</div>`;
+}
+async function carregarFotos(id){try{const x=await db.collection("ebd_fotos").where("aulaId","==",id).get();cacheFotos[id]=x.docs.map(y=>({id:y.id,...y.data()})).sort((p,q)=>(p.criadoEm||"").localeCompare(q.criadoEm||""))}catch(e){console.error(e);cacheFotos[id]=[]}if(view==="dia"&&st.diaAba==="registro")render()}
+async function enviarFotos(files){
+  const id=aulaId(st.dia,st.sala);const box=$("#fotoUp");let n=0;cacheFotos[id]=cacheFotos[id]||[];
+  for(const f of files){if(!/^image[/]/.test(f.type))continue;if(box)box.innerHTML=`<p class="empty">Enviando foto ${n+1} de ${files.length}…</p>`;
+    try{const dataUrl=await comprimirImagem(f);const ref=db.collection("ebd_fotos").doc();const doc={aulaId:id,data:st.dia,salaId:st.sala,dataUrl,enviadoPor:meuEmail,criadoEm:new Date().toISOString()};
+      await ref.set(doc);cacheFotos[id].push({id:ref.id,...doc});n++}catch(e){console.error(e);toast("Não foi possível enviar uma das fotos.")}}
+  if(n){await salvarDia({fotosQtd:cacheFotos[id].length},n===1?"Foto enviada":n+" fotos enviadas")}
+  render();
+}
+async function verFoto(fid){const id=aulaId(st.dia,st.sala);const f=(cacheFotos[id]||[]).find(x=>x.id===fid);if(!f)return;try{const blob=await (await fetch(f.dataUrl)).blob();const u=URL.createObjectURL(blob);if(!window.open(u,"_blank"))baixarBlob(blob,"ebd-"+st.dia+".jpg");setTimeout(()=>URL.revokeObjectURL(u),60000)}catch(e){console.error(e)}}
+function abaPainel(a){
+  const c=contaDia(a),r=a.resumo||{},resp=a.responsaveis||[],fot=a.fotosQtd||0,stt=statusAbas(a),max=Math.max(c.alunos,c.vis,1);
+  const itens=[["Chamada","presenca"],["Resumo da aula","resumo"],["Professores responsáveis","responsaveis"],["Fotos do dia","registro"]];
+  return `<div class="pd-grid">
+  <section class="panel"><h3>Presença do dia</h3><div class="pd-n"><div><b>${c.total}</b><span>presentes</span></div><div><b>${c.alunos}</b><span>alunos</span></div><div><b class="cv">${c.vis}</b><span>visitantes</span></div></div>
+    <div class="hb"><span>Alunos</span><i style="width:${c.alunos/max*100}%" class="ha"></i><b>${c.alunos}</b></div><div class="hb"><span>Visitantes</span><i style="width:${c.vis/max*100}%" class="hv"></i><b>${c.vis}</b></div></section>
+  <section class="panel"><h3>Responsáveis pelo dia</h3>${resp.length?`<ul class="plain">${resp.map(n=>`<li>${esc(n)}</li>`).join("")}</ul>`:`<p class="empty">Ainda não informado.</p>`}${a.professor?`<p class="hint" style="margin:6px 0 0">Na escala: ${esc(a.professor)}</p>`:""}</section>
+  <section class="panel"><h3>Aula</h3><p style="margin:0"><b>${esc(r.tema||a.tema||"Tema não informado")}</b></p>${r.versiculo?`<p class="sub" style="margin:4px 0 0">${esc(r.versiculo)}</p>`:""}${r.texto?`<p style="margin:8px 0 0;font-size:.92rem;white-space:pre-wrap">${esc(r.texto)}</p>`:""}<p class="hint" style="margin:8px 0 0">${fot} ${fot===1?"foto registrada":"fotos registradas"}</p></section>
+  <section class="panel"><h3>Registro completo?</h3><ul class="plain chk-l">${itens.map(([t,k])=>`<li class="${stt[k]?"ok":""}"><button class="lnk" data-aba="${k}">${stt[k]?"✓":"○"} ${t}</button></li>`).join("")}</ul><button class="btn" data-act="copiar-dia" style="margin-top:10px">Copiar resumo para WhatsApp</button></section></div>`;
+}
+function textoDia(){const a=aulaDe(st.dia,st.sala)||{},c=contaDia(a),r=a.resumo||{};const L=[`*EBD · ${salaNome(st.sala)} · ${fmt(st.dia)}*`];
+  if(r.tema||a.tema)L.push(`📖 Tema: ${r.tema||a.tema}`);if(r.versiculo)L.push(`✝️ Versículo: ${r.versiculo}`);
+  L.push(`👧 Alunos presentes: ${c.alunos}`,`👋 Visitantes: ${c.vis}`);if((a.responsaveis||[]).length)L.push(`🙋 Responsáveis: ${a.responsaveis.join(", ")}`);
+  return L.join(String.fromCharCode(10))}
+function idadeDe(n){if(!n)return null;const h=new Date(),b=dt(n);let x=h.getFullYear()-b.getFullYear();if(h.getMonth()<b.getMonth()||(h.getMonth()===b.getMonth()&&h.getDate()<b.getDate()))x--;return x}
+function dlgTrazer(){
+  garantirSala();const d=$("#dlg");const ja=new Set(alunos.map(x=>x.membroId).filter(Boolean)),jaN=new Set(alunos.map(x=>norm(x.nome)));
+  const kids=membrosDir.filter(m=>{const i=idadeDe(m.nascimento);return i!=null&&i<12&&!ja.has(m.id)&&!jaN.has(norm(m.nome))}).sort(byNome);
+  d.innerHTML=`<form id="fTrazer"><div class="dlg-h"><div><h2>Trazer crianças do cadastro</h2><div class="sub">Crianças (até 11 anos) do cadastro de membros que ainda não são alunos</div></div><button type="button" class="btn ghost sm" data-close>Fechar</button></div>
+  <div class="dlg-b"><label class="lbl2">Sala<select name="sala">${salasOrd().map(s=>`<option value="${s.id}" ${s.id===st.sala?"selected":""}>${esc(s.nome)}</option>`).join("")}</select></label>
+  ${kids.length?`<div class="opts">${kids.map(k=>`<label class="opt on"><input type="checkbox" name="kid" value="${k.id}" checked><span>${esc(k.nome)}</span><span class="mini">${idadeDe(k.nascimento)} anos</span></label>`).join("")}</div>`:`<p class="empty">Nenhuma criança nova encontrada no cadastro. Se você acabou de importar, abra o Painel uma vez para atualizar a lista.</p>`}</div>
+  ${kids.length?`<div class="dlg-f"><button class="btn pri" type="submit">Cadastrar como alunos</button></div>`:""}</form>`;
+  d.querySelector("#fTrazer").addEventListener("submit",async ev=>{ev.preventDefault();const f=ev.target;const sala=f.elements.sala.value;const ids=[...f.querySelectorAll('input[name=kid]:checked')].map(i=>i.value);let n=0;
+    for(const id of ids){const k=membrosDir.find(m=>m.id===id);if(!k)continue;if(await gravar(()=>db.collection("ebd_alunos").doc().set({nome:k.nome,nascimento:k.nascimento||"",whatsapp:k.whatsapp||"",membroId:k.id,salaId:sala,origem:"membro",criadoEm:new Date().toISOString(),criadoPor:meuEmail})))n++;else break}
+    toast(`${n} ${n===1?"criança cadastrada":"crianças cadastradas"} como aluno`);d.close()});
+  d.showModal();
+}
+function secEquipe(){
+  const g=f=>equipe.filter(e=>(e.funcao||"professor")===f).sort(byNome);
+  const li=e=>`<li><div class="grow"><div class="t">${esc(e.nome)}</div></div>${souAdmin?`<button class="btn sm ghost danger" data-rm-equipe="${e.id}">Remover</button>`:""}</li>`;
+  return `<section class="panel" style="margin-top:14px"><h3>Equipe da EBD</h3><p class="sub" style="margin:-4px 0 10px">Professores e ajudantes que aparecem para seleção em “Professores responsáveis”.</p>
+  ${souAdmin?`<form id="fEquipe" class="form"><label>Nome<input name="nome" list="dl-eq" required autocomplete="off"><datalist id="dl-eq">${membrosDir.map(m=>`<option value="${esc(m.nome)}">`).join("")}</datalist></label><label>Função<select name="funcao"><option value="professor">Professor(a)</option><option value="ajudante">Ajudante</option></select></label><div style="align-self:end"><button class="btn pri" type="submit" style="width:100%">Adicionar à equipe</button></div></form>`:""}
+  <div class="grid2"><div><h4>Professores</h4>${g("professor").length?`<ul class="list">${g("professor").map(li).join("")}</ul>`:`<p class="empty">Nenhum ainda.</p>`}</div><div><h4>Ajudantes</h4>${g("ajudante").length?`<ul class="list">${g("ajudante").map(li).join("")}</ul>`:`<p class="empty">Nenhum ainda.</p>`}</div></div></section>`;
+}
+
 /* ---------- indicadores ---------- */
 function vIndicadores(){
   const ds=domingos(st.tri),ss=salasOrd(),h=hoje();
@@ -535,7 +720,7 @@ function vIndicadores(){
 
 /* ---------- alunos ---------- */
 function vAlunos(){
-  return `<div class="view-title"><div><h2>Alunos</h2><p class="sub">${alunos.length} alunos cadastrados</p></div><div>${triSel()}</div></div>
+  return `<div class="view-title"><div><h2>Alunos</h2><p class="sub">${alunos.filter(x=>!x.visitante).length} alunos e ${alunos.filter(x=>x.visitante).length} visitantes</p></div><div style="display:flex;gap:8px;flex-wrap:wrap">${souAdmin?`<button class="btn" data-act="trazer-criancas">Trazer crianças do cadastro</button>`:""}${triSel()}</div></div>
   <div class="toolbar"><input type="search" id="alBusca" placeholder="Buscar por nome" value="${esc(st.alBusca)}" aria-label="Buscar aluno">
   <select data-alsala aria-label="Sala" style="width:auto"><option value="">Todas as salas</option>${salasOrd().map(s=>`<option value="${s.id}" ${st.alSala===s.id?"selected":""}>${esc(s.nome)}</option>`).join("")}</select></div><div id="alLista"></div>`;
 }
@@ -544,7 +729,7 @@ function lAlunos(){
   const doTri=aulas.filter(a=>a.tri===st.tri&&a.presentes);
   const arr=alunos.filter(x=>(!st.alSala||x.salaId===st.alSala)&&(!q||norm(x.nome).includes(q))).sort(byNome);
   el.innerHTML=arr.length?`<div class="rows">${arr.map(x=>{const aul=doTri.filter(a=>a.salaId===x.salaId),p=doTri.filter(a=>a.presentes.includes(x.id)).length;const r=(x.revistas||{})[st.tri]||{};
-    return `<button class="row" data-ver-aluno="${x.id}"><span class="t">${esc(x.nome)}</span><span class="chip ${r.pago?"c-ok":r.revista?"c-pend":"c-off"}"><span class="dot"></span>${r.pago?"Revista paga":r.revista?"Revista não paga":"Sem revista"}</span><span class="m">${esc(salaNome(x.salaId))} · ${p} ${p===1?"presença":"presenças"} em ${aul.length} ${aul.length===1?"aula":"aulas"} no trimestre${aul.length?" ("+Math.round(p/aul.length*100)+"%)":""}</span></button>`}).join("")}</div>`:`<div class="panel"><p class="empty">Nenhum aluno encontrado.</p></div>`;
+    return `<button class="row" data-ver-aluno="${x.id}"><span class="t">${esc(x.nome)}${x.visitante?` <span class="mini vis">Visitante</span>`:""}</span><span class="chip ${r.pago?"c-ok":r.revista?"c-pend":"c-off"}"><span class="dot"></span>${r.pago?"Revista paga":r.revista?"Revista não paga":"Sem revista"}</span><span class="m">${esc(salaNome(x.salaId))} · ${p} ${p===1?"presença":"presenças"} em ${aul.length} ${aul.length===1?"aula":"aulas"} no trimestre${aul.length?" ("+Math.round(p/aul.length*100)+"%)":""}</span></button>`}).join("")}</div>`:`<div class="panel"><p class="empty">Nenhum aluno encontrado.</p></div>`;
 }
 function dlgAluno(id){
   const x=alunos.find(a=>a.id===id);if(!x)return;const d=$("#dlg");
@@ -553,8 +738,10 @@ function dlgAluno(id){
     <label>Sala<select name="salaId">${salasOrd().map(s=>`<option value="${s.id}" ${s.id===x.salaId?"selected":""}>${esc(s.nome)}</option>`).join("")}</select></label>
     <label>WhatsApp<input name="whatsapp" inputmode="tel" value="${esc(x.whatsapp)}"></label>
     <label>Nascimento<input type="date" name="nascimento" value="${esc(x.nascimento)}"></label>
+    <label>Situação<select name="vis"><option value="">Aluno(a)</option><option value="1" ${x.visitante?"selected":""}>Visitante</option></select></label>
+    ${x.visitante?`<label>Responsável<input name="responsavel" value="${esc(x.responsavel)}"></label><label>Telefone do responsável<input name="responsavelTel" value="${esc(x.responsavelTel)}"></label>`:""}
   </div></div><div class="dlg-f"><button type="button" class="btn danger ghost" data-rm-aluno="${x.id}" style="margin-right:auto">Excluir</button><button class="btn pri" type="submit">Salvar</button></div></form>`;
-  d.querySelector("#fAluno").addEventListener("submit",async ev=>{ev.preventDefault();const f=ev.target;const v={nome:f.elements.nome.value.trim(),salaId:f.elements.salaId.value,whatsapp:f.elements.whatsapp.value.trim(),nascimento:f.elements.nascimento.value};if(!v.nome)return;
+  d.querySelector("#fAluno").addEventListener("submit",async ev=>{ev.preventDefault();const f=ev.target;const v={nome:f.elements.nome.value.trim(),salaId:f.elements.salaId.value,whatsapp:f.elements.whatsapp.value.trim(),nascimento:f.elements.nascimento.value,visitante:f.elements.vis.value==="1"};if(f.elements.responsavel){v.responsavel=f.elements.responsavel.value.trim();v.responsavelTel=f.elements.responsavelTel.value.trim()}if(!v.nome)return;
     if(await gravar(()=>db.collection("ebd_alunos").doc(id).update(v),"Aluno atualizado"))d.close()});
   if(!d.open)d.showModal();
 }
@@ -562,9 +749,9 @@ function dlgAluno(id){
 /* ---------- salas ---------- */
 function vSalas(){
   const ss=salasOrd();
-  return `<div class="view-title"><div><h2>Salas</h2><p class="sub">Turmas da Escola Bíblica Dominical</p></div></div>
+  return `<div class="view-title"><div><h2>Salas e equipe</h2><p class="sub">Turmas da Escola Bíblica Dominical</p></div></div>
   ${souAdmin?`<section class="panel"><h3>Nova sala</h3><form id="fSala" class="form"><label>Nome da sala<input name="nome" required placeholder="Ex.: Juniores"></label><label>Público<input name="publico" placeholder="Ex.: 9 a 12 anos"></label><label>Ordem<input name="ordem" type="number" min="1" value="${ss.length+1}"></label><div style="align-self:end"><button class="btn pri" type="submit" style="width:100%">Adicionar sala</button></div></form></section>`:""}
-  <section class="panel" style="margin-top:14px">${ss.length?`<ul class="list">${ss.map(s=>`<li><div class="grow"><div class="t">${esc(s.nome)}</div><div class="m">${s.publico?esc(s.publico)+" · ":""}${alunos.filter(x=>x.salaId===s.id).length} alunos</div></div>${souAdmin?`<button class="btn sm ghost danger" data-rm-sala="${s.id}">Remover</button>`:""}</li>`).join("")}</ul>`:`<p class="empty">Nenhuma sala cadastrada.</p>`}</section>`;
+  <section class="panel" style="margin-top:14px">${ss.length?`<ul class="list">${ss.map(s=>`<li><div class="grow"><div class="t">${esc(s.nome)}</div><div class="m">${s.publico?esc(s.publico)+" · ":""}${alunos.filter(x=>x.salaId===s.id).length} alunos</div></div>${souAdmin?`<button class="btn sm ghost danger" data-rm-sala="${s.id}">Remover</button>`:""}</li>`).join("")}</ul>`:`<p class="empty">Nenhuma sala cadastrada.</p>`}</section>${secEquipe()}`;
 }
 
 /* ---------- administração: quem acessa a EBD ---------- */
@@ -589,7 +776,18 @@ async function carregarAcessos(){const el=$("#acList");if(!el)return;try{const x
 
 /* ---------- eventos ---------- */
 document.addEventListener("click",async ev=>{
+  const im=ev.target.closest("[data-ver-foto]");if(im){verFoto(im.dataset.verFoto);return}
   const t=ev.target.closest("button,a");if(!t)return;const ds=t.dataset;
+  if(ds.dia){st.dia=ds.dia;st.diaAba="presenca";if(location.hash==="#dia")route();else location.hash="#dia";return}
+  if(ds.aba){if((st.resDirty||st.respDirty)&&!(await confirmar("Há alterações não salvas nesta aba. Sair mesmo assim?","Sair",false)))return;st.resDirty=st.respDirty=false;st.diaAba=ds.aba;render();return}
+  if(ds.ref){if(st.periodo==="ano"){st.ref=(+st.ref.slice(0,4)+(+ds.ref))+st.ref.slice(4)}else{const d=new Date(+st.ref.slice(0,4),+st.ref.slice(5,7)-1+(+ds.ref),1);st.ref=d.getFullYear()+"-"+pad(d.getMonth()+1)}render();return}
+  if(ds.per){st.periodo=ds.per;render();return}
+  if(ds.act==="novo-visitante"){dlgVisitante();return}
+  if(ds.chk){const a=aulaDe(st.dia,st.sala)||{};const s2=new Set(a.presentes||[]);s2.has(ds.chk)?s2.delete(ds.chk):s2.add(ds.chk);t.classList.toggle("on");await salvarDia({presentes:[...s2],presencaPor:meuEmail,presencaEm:new Date().toISOString()});return}
+  if(ds.act==="copiar-dia"){copiar(textoDia());return}
+  if(ds.rmFoto){if(!(await confirmar("Excluir esta foto?","Excluir")))return;const id=aulaId(st.dia,st.sala);if(await gravar(()=>db.collection("ebd_fotos").doc(ds.rmFoto).delete(),"Foto excluída")){cacheFotos[id]=(cacheFotos[id]||[]).filter(x=>x.id!==ds.rmFoto);await salvarDia({fotosQtd:cacheFotos[id].length});render()}return}
+  if(ds.rmEquipe){if(await confirmar("Remover esta pessoa da equipe?","Remover"))await gravar(()=>db.collection("ebd_equipe").doc(ds.rmEquipe).delete(),"Removido da equipe");return}
+  if(ds.act==="trazer-criancas"){dlgTrazer();return}
   if(ds.close!==undefined){$("#dlg").close();return}
   if(ds.act==="entrar"){entrar(false);return}
   if(ds.act==="trocar-conta"){entrar(true);return}
@@ -620,6 +818,10 @@ document.addEventListener("click",async ev=>{
 });
 document.addEventListener("change",ev=>{
   const e=ev.target;
+  if(e.matches("select[data-salasel]")){st.sala=e.value;st.resDirty=st.respDirty=false;render();return}
+  if(e.id==="fFotos"){enviarFotos([...e.files]);return}
+  if(e.name==="resp"){e.closest(".opt").classList.toggle("on",e.checked);st.respDirty=true;return}
+  if(e.name==="kid"){e.closest(".opt").classList.toggle("on",e.checked);return}
   if(e.matches("select[data-tri]")){st.tri=e.value;st.pres=null;st.presData="";render();return}
   if(e.matches("select[data-prepprof]")){st.prepProf=e.value;render();return}
   if(e.matches("select[data-presdata]")||e.matches("select[data-pressala]")){
@@ -627,6 +829,7 @@ document.addEventListener("change",ev=>{
   if(e.matches("select[data-alsala]")){st.alSala=e.value;lAlunos();return}
 });
 document.addEventListener("input",ev=>{
+  if(ev.target.form&&ev.target.form.id==="fRes")st.resDirty=true;
   if(ev.target.id==="presBusca"){st.presBusca=ev.target.value;lBuscaPres()}
   if(ev.target.id==="alBusca"){st.alBusca=ev.target.value;lAlunos()}
   if(ev.target.name==="nome"&&ev.target.form&&ev.target.form.id==="fNovoAluno"){const f=ev.target.form;const mb=membrosDir.find(m=>norm(m.nome)===norm(ev.target.value));const info=$("#vincInfo");
@@ -634,6 +837,9 @@ document.addEventListener("input",ev=>{
 });
 document.addEventListener("submit",async ev=>{
   const f=ev.target;
+  if(f.id==="fRes"){ev.preventDefault();const E=f.elements;if(await salvarDia({resumo:{tema:E.tema.value.trim(),versiculo:E.versiculo.value.trim(),texto:E.texto.value.trim(),por:meuEmail,em:new Date().toISOString()}},"Resumo salvo")){st.resDirty=false;render()}return}
+  if(f.id==="fResp"){ev.preventDefault();const sel=[...f.querySelectorAll("input[name=resp]:checked")].map(i=>i.value);if(await salvarDia({responsaveis:sel},"Responsáveis salvos")){st.respDirty=false;render()}return}
+  if(f.id==="fEquipe"){ev.preventDefault();const nome=f.elements.nome.value.trim();if(!nome)return;if(equipe.some(e=>norm(e.nome)===norm(nome)&&e.funcao===f.elements.funcao.value)){toast("Essa pessoa já está na equipe.");return}if(await gravar(()=>db.collection("ebd_equipe").doc().set({nome,funcao:f.elements.funcao.value,criadoEm:new Date().toISOString()}),"Adicionado à equipe"))f.reset();return}
   if(f.id==="fNovoAluno"){ev.preventDefault();const nome=f.elements.nome.value.trim();if(!nome)return;
     if(alunos.some(x=>norm(x.nome)===norm(nome))&&!(await confirmar("Já existe um aluno com esse nome. Cadastrar mesmo assim?","Cadastrar",false)))return;
     const mb=membrosDir.find(m=>norm(m.nome)===norm(nome));
@@ -650,6 +856,7 @@ function atualizar(){
   const d=$("#dlg");
   if(view==="presenca"){if(!$("#presLista"))render();else lPresenca()}
   else if(view==="alunos")lAlunos();
+  else if(view==="dia"){if((st.diaAba==="resumo"&&st.resDirty)||(st.diaAba==="responsaveis"&&st.respDirty))return;render()}
   else render();
   if(d.open&&d.dataset.prep&&!d.querySelector("#prTexto:focus")){}
 }
@@ -699,6 +906,7 @@ function init(){
     assinar("ebd_salas","s",v=>salas=v.filter(s=>s.nome));
     assinar("ebd_aulas","a",v=>aulas=v.filter(a=>a.data&&a.salaId));
     assinar("ebd_alunos","l",v=>alunos=v.filter(a=>a.nome));
+    assinar("ebd_equipe","e",v=>equipe=v.filter(e=>e.nome));
     carregarDiretorio(fdb);
   });
 }
