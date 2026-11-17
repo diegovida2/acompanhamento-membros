@@ -342,6 +342,10 @@ h4{margin:0 0 6px;font-size:.95rem}
 .lg.a{background:var(--brand)} .lg.v{background:var(--conn);margin-left:8px}
 .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-top:12px}
 
+
+.btn-painel{display:inline-flex;align-items:center;gap:6px;margin:6px 0 2px;padding:8px 16px;border-radius:999px;background:var(--brand);color:var(--brand-ink)!important;font-weight:700;font-size:.92rem;text-decoration:none!important;box-shadow:0 2px 8px -3px color-mix(in srgb,var(--brand) 70%,transparent)}
+.btn-painel:hover{filter:brightness(1.08)}
+.btn-painel svg{flex:none}
 </style>
 </head>
 <body>
@@ -687,12 +691,12 @@ const podeGerir=()=>!!db; // todos com acesso à EBD (líderes, professores e ad
 const temIdades=sl=>sl.idadeMin!=null&&sl.idadeMin!==""&&sl.idadeMax!=null&&sl.idadeMax!=="";
 function salaPorIdade(i){if(i==null||isNaN(i))return null;return salasOrd().find(sl=>temIdades(sl)&&i>=+sl.idadeMin&&i<=+sl.idadeMax)||null}
 function idadeAluno(x){if(x.nascimento)return idadeDe(x.nascimento);if(x.idade!==""&&x.idade!=null&&!isNaN(+x.idade))return +x.idade;return null}
-function faixaTxt(sl){return temIdades(sl)?`${sl.idadeMin} a ${sl.idadeMax} anos`:(sl.publico?esc(sl.publico):"Sem faixa de idade")}
+function faixaTxt(sl){if(sl.adultos)return "Sala de adultos · todos os membros, menos crianças";return temIdades(sl)?`${sl.idadeMin} a ${sl.idadeMax} anos`:(sl.publico?esc(sl.publico):"Sem faixa de idade")}
 function lerFaixa(f){const a=f.elements.idadeMin.value,b=f.elements.idadeMax.value;if((a===""&&b!=="")||(a!==""&&b===""))return {erro:"Preencha a idade mínima e a máxima, ou deixe as duas em branco."};if(a!==""&&+a>+b)return {erro:"A idade mínima não pode ser maior que a máxima."};return {idadeMin:a===""?null:+a,idadeMax:b===""?null:+b}}
 function dlgSala(id){const sl=salas.find(x=>x.id===id);if(!sl)return;const d=$("#dlg");
-  d.innerHTML=`<form id="fSalaEd"><div class="dlg-h"><h2>Editar sala</h2><button type="button" class="btn ghost sm" data-close>Fechar</button></div><div class="dlg-b"><div class="form"><label class="full">Nome<input name="nome" required value="${esc(sl.nome)}"></label><label>Idade mínima<input name="idadeMin" type="number" min="0" max="120" value="${sl.idadeMin??""}"></label><label>Idade máxima<input name="idadeMax" type="number" min="0" max="120" value="${sl.idadeMax??""}"></label><label>Ordem<input name="ordem" type="number" min="1" value="${sl.ordem??""}"></label></div><p class="hint" style="margin:0">Com a faixa de idade, as crianças vão automaticamente para esta sala.</p></div><div class="dlg-f"><button class="btn pri" type="submit">Salvar</button></div></form>`;
+  d.innerHTML=`<form id="fSalaEd"><div class="dlg-h"><h2>Editar sala</h2><button type="button" class="btn ghost sm" data-close>Fechar</button></div><div class="dlg-b"><div class="form"><label class="full">Nome<input name="nome" required value="${esc(sl.nome)}"></label><label>Idade mínima<input name="idadeMin" type="number" min="0" max="120" value="${sl.idadeMin??""}"></label><label>Idade máxima<input name="idadeMax" type="number" min="0" max="120" value="${sl.idadeMax??""}"></label><label>Ordem<input name="ordem" type="number" min="1" value="${sl.ordem??""}"></label><label class="check full"><input type="checkbox" name="adultos" ${sl.adultos?"checked":""}> Sala de adultos (recebe todos os membros, menos as crianças)</label></div><p class="hint" style="margin:0">Com a faixa de idade, as crianças vão automaticamente para esta sala.</p></div><div class="dlg-f"><button class="btn pri" type="submit">Salvar</button></div></form>`;
   d.querySelector("#fSalaEd").addEventListener("submit",async ev=>{ev.preventDefault();const f=ev.target;const fx=lerFaixa(f);if(fx.erro){toast(fx.erro);return}
-    if(await gravar(()=>db.collection("ebd_salas").doc(id).update({nome:f.elements.nome.value.trim(),idadeMin:fx.idadeMin,idadeMax:fx.idadeMax,ordem:+f.elements.ordem.value||99}),"Sala atualizada"))d.close()});
+    if(await gravar(()=>db.collection("ebd_salas").doc(id).update({nome:f.elements.nome.value.trim(),idadeMin:fx.idadeMin,idadeMax:fx.idadeMax,ordem:+f.elements.ordem.value||99,adultos:f.elements.adultos.checked}),"Sala atualizada"))d.close()});
   d.showModal()}
 async function reorganizar(){
   const mov=alunos.map(x=>({x,i:idadeAluno(x)})).map(o=>({...o,sl:salaPorIdade(o.i)})).filter(o=>o.sl&&o.sl.id!==o.x.salaId&&!o.x.salaFixa);
@@ -702,16 +706,30 @@ async function reorganizar(){
   toast(`${n} ${n===1?"criança mudou":"crianças mudaram"} de sala`);
 }
 function idadeDe(n){if(!n)return null;const h=new Date(),b=dt(n);let x=h.getFullYear()-b.getFullYear();if(h.getMonth()<b.getMonth()||(h.getMonth()===b.getMonth()&&h.getDate()<b.getDate()))x--;return x}
+function destinoMembro(m){
+  const i=idadeDe(m.nascimento);const k=salaPorIdade(i);if(k)return k;
+  const crianca=m.faixa==="Criança"||(i!=null&&i<=12);if(crianca)return null;
+  if(m.grupo==="conectando")return null;
+  return salasOrd().find(sl=>sl.adultos)||null;
+}
 function dlgTrazer(){
   const d=$("#dlg");const ja=new Set(alunos.map(x=>x.membroId).filter(Boolean)),jaN=new Set(alunos.map(x=>norm(x.nome)));
-  const temFaixa=salas.some(sl=>temIdades(sl));
-  const kids=membrosDir.map(m=>({m,i:idadeDe(m.nascimento)})).filter(k=>k.i!=null&&salaPorIdade(k.i)&&!ja.has(k.m.id)&&!jaN.has(norm(k.m.nome))).sort((a,b)=>byNome(a.m,b.m));
-  d.innerHTML=`<form id="fTrazer"><div class="dlg-h"><div><h2>Trazer crianças do cadastro</h2><div class="sub">Cada criança vai para a sala da idade dela</div></div><button type="button" class="btn ghost sm" data-close>Fechar</button></div>
-  <div class="dlg-b">${!temFaixa?`<p class="notice">Defina a faixa de idade das salas em <b>Salas e equipe</b> (ex.: Ovelhinhas de 1 a 5 anos). Sem isso o app não sabe para qual sala mandar cada criança.</p>`:kids.length?`<div class="opts">${kids.map(k=>`<label class="opt on"><input type="checkbox" name="kid" value="${k.m.id}" checked><span>${esc(k.m.nome)}</span><span class="mini">${k.i} ${k.i===1?"ano":"anos"} → ${esc(salaPorIdade(k.i).nome)}</span></label>`).join("")}</div>`:`<p class="empty">Nenhuma criança nova encontrada no cadastro dentro das faixas de idade das salas. Se você acabou de importar, abra o Painel uma vez para atualizar a lista.</p>`}</div>
-  ${temFaixa&&kids.length?`<div class="dlg-f"><button class="btn pri" type="submit">Cadastrar como alunos</button></div>`:""}</form>`;
-  const fm=d.querySelector("#fTrazer");fm.addEventListener("submit",async ev=>{ev.preventDefault();const ids=[...fm.querySelectorAll('input[name=kid]:checked')].map(i=>i.value);let n=0;
-    for(const id of ids){const k=membrosDir.find(m=>m.id===id);if(!k)continue;const sl=salaPorIdade(idadeDe(k.nascimento));if(!sl)continue;if(await gravar(()=>db.collection("ebd_alunos").doc().set({nome:k.nome,nascimento:k.nascimento||"",whatsapp:k.whatsapp||"",membroId:k.id,salaId:sl.id,origem:"membro",criadoEm:new Date().toISOString(),criadoPor:meuEmail})))n++;else break}
-    toast(`${n} ${n===1?"criança cadastrada":"crianças cadastradas"} nas salas pela idade`);d.close()});
+  const temConfig=salas.some(sl=>temIdades(sl)||sl.adultos),salaAd=salasOrd().find(sl=>sl.adultos);
+  const lista=membrosDir.map(m=>({m,i:idadeDe(m.nascimento),sl:destinoMembro(m)})).filter(k=>k.sl&&!ja.has(k.m.id)&&!jaN.has(norm(k.m.nome))).sort((a,b)=>byNome(a.m,b.m));
+  const grupos=salasOrd().map(sl=>({sl,its:lista.filter(k=>k.sl.id===sl.id)})).filter(g=>g.its.length);
+  d.innerHTML=`<form id="fTrazer"><div class="dlg-h"><div><h2>Trazer membros do cadastro</h2><div class="sub">Crianças vão para a sala da idade; os demais membros, para a sala de adultos</div></div><button type="button" class="btn ghost sm" data-close>Fechar</button></div>
+  <div class="dlg-b">${!temConfig?`<p class="notice">Em <b>Salas e equipe</b>, defina a faixa de idade das salas das crianças e marque a sala de adultos. Sem isso o app não sabe para onde mandar cada pessoa.</p>`:""}
+  ${temConfig&&!salaAd?`<p class="notice">Nenhuma sala está marcada como <b>sala de adultos</b>. Edite a sala do adulto em Salas e equipe e marque essa opção para trazer os demais membros.</p>`:""}
+  ${grupos.length?grupos.map(g=>`<div><h4>${esc(g.sl.nome)} <span class="hint">· ${g.its.length} ${g.its.length===1?"pessoa":"pessoas"}</span> <button type="button" class="lnk" data-marcar="${g.sl.id}">desmarcar todos</button></h4><div class="opts">${g.its.map(k=>`<label class="opt on"><input type="checkbox" name="kid" value="${k.m.id}" data-sala="${g.sl.id}" checked><span>${esc(k.m.nome)}</span>${k.i!=null?`<span class="mini">${k.i} ${k.i===1?"ano":"anos"}</span>`:""}</label>`).join("")}</div></div>`).join(""):temConfig?`<p class="empty">Ninguém novo para trazer: todos os membros já estão nas salas. Se você acabou de cadastrar pessoas no Acompanhamento, abra o Painel uma vez para atualizar a lista.</p>`:""}
+  <p class="hint" style="margin:0">Ficam de fora: crianças sem sala na idade delas (ex.: menos de 1 ano) e visitantes (Conectando).</p></div>
+  ${grupos.length?`<div class="dlg-f"><button class="btn pri" type="submit">Cadastrar ${lista.length} ${lista.length===1?"pessoa":"pessoas"} como alunos</button></div>`:""}</form>`;
+  const fm=d.querySelector("#fTrazer");
+  fm.addEventListener("click",e=>{const b=e.target.closest("[data-marcar]");if(!b)return;const cbs=[...fm.querySelectorAll(`input[data-sala="${b.dataset.marcar}"]`)];const lig=!cbs.every(c=>c.checked)?true:false;cbs.forEach(c=>{c.checked=lig;c.closest(".opt").classList.toggle("on",lig)});b.textContent=lig?"desmarcar todos":"marcar todos"});
+  fm.addEventListener("submit",async ev=>{ev.preventDefault();const sel=[...fm.querySelectorAll('input[name=kid]:checked')];const btn=fm.querySelector("button[type=submit]");btn.disabled=true;let n=0;
+    for(let i=0;i<sel.length;i+=20){const parte=sel.slice(i,i+20);
+      const res=await Promise.all(parte.map(c=>{const k=membrosDir.find(m=>m.id===c.value);if(!k)return false;return gravar(()=>db.collection("ebd_alunos").doc().set({nome:k.nome,nascimento:k.nascimento||"",whatsapp:k.whatsapp||"",membroId:k.id,salaId:c.dataset.sala,origem:"membro",criadoEm:new Date().toISOString(),criadoPor:meuEmail}))}));
+      n+=res.filter(Boolean).length;btn.textContent=`Cadastrando… ${n} de ${sel.length}`}
+    toast(`${n} ${n===1?"pessoa cadastrada":"pessoas cadastradas"} nas salas`);d.close()});
   d.showModal();
 }
 function secEquipe(){
@@ -788,7 +806,7 @@ function vIndicadores(){
 
 /* ---------- alunos ---------- */
 function vAlunos(){
-  return `<div class="view-title"><div><h2>Alunos</h2><p class="sub">${alunos.filter(x=>!x.visitante).length} alunos e ${alunos.filter(x=>x.visitante).length} visitantes</p></div><div style="display:flex;gap:8px;flex-wrap:wrap">${podeGerir()?`<button class="btn" data-act="trazer-criancas">Trazer crianças do cadastro</button><button class="btn" data-act="reorganizar">Reorganizar salas por idade</button>`:""}${triSel()}</div></div>
+  return `<div class="view-title"><div><h2>Alunos</h2><p class="sub">${alunos.filter(x=>!x.visitante).length} alunos e ${alunos.filter(x=>x.visitante).length} visitantes</p></div><div style="display:flex;gap:8px;flex-wrap:wrap">${podeGerir()?`<button class="btn" data-act="trazer-criancas">Trazer membros do cadastro</button><button class="btn" data-act="reorganizar">Reorganizar salas por idade</button>`:""}${triSel()}</div></div>
   <div class="toolbar"><input type="search" id="alBusca" placeholder="Buscar por nome" value="${esc(st.alBusca)}" aria-label="Buscar aluno">
   <select data-alsala aria-label="Sala" style="width:auto"><option value="">Todas as salas</option>${salasOrd().map(s=>`<option value="${s.id}" ${st.alSala===s.id?"selected":""}>${esc(s.nome)}</option>`).join("")}</select></div><div id="alLista"></div>`;
 }
@@ -819,7 +837,7 @@ function dlgAluno(id){
 function vSalas(){
   const ss=salasOrd();
   return `<div class="view-title"><div><h2>Salas e equipe</h2><p class="sub">Turmas da Escola Bíblica Dominical</p></div></div>
-  ${podeGerir()?`<section class="panel"><h3>Nova sala</h3><form id="fSala" class="form"><label>Nome da sala<input name="nome" required placeholder="Ex.: Juniores"></label><label>Idade mínima<input name="idadeMin" type="number" min="0" max="120" inputmode="numeric" placeholder="Ex.: 1"></label><label>Idade máxima<input name="idadeMax" type="number" min="0" max="120" inputmode="numeric" placeholder="Ex.: 5"></label><label>Ordem<input name="ordem" type="number" min="1" value="${ss.length+1}"></label><div style="align-self:end"><button class="btn pri" type="submit" style="width:100%">Adicionar sala</button></div></form></section>`:""}
+  ${podeGerir()?`<section class="panel"><h3>Nova sala</h3><form id="fSala" class="form"><label>Nome da sala<input name="nome" required placeholder="Ex.: Juniores"></label><label>Idade mínima<input name="idadeMin" type="number" min="0" max="120" inputmode="numeric" placeholder="Ex.: 1"></label><label>Idade máxima<input name="idadeMax" type="number" min="0" max="120" inputmode="numeric" placeholder="Ex.: 5"></label><label>Ordem<input name="ordem" type="number" min="1" value="${ss.length+1}"></label><label class="check full"><input type="checkbox" name="adultos"> Sala de adultos (recebe todos os membros, menos as crianças)</label><div style="align-self:end"><button class="btn pri" type="submit" style="width:100%">Adicionar sala</button></div></form></section>`:""}
   <section class="panel" style="margin-top:14px">${ss.length?`<ul class="list">${ss.map(s=>`<li><div class="grow"><div class="t">${esc(s.nome)}</div><div class="m">${faixaTxt(s)} · ${alunos.filter(x=>x.salaId===s.id&&!x.visitante).length} alunos</div></div>${podeGerir()?`<button class="btn sm" data-editar-sala="${s.id}">Editar</button>`:""}${souAdmin?`<button class="btn sm ghost danger" data-rm-sala="${s.id}">Remover</button>`:""}</li>`).join("")}</ul>`:`<p class="empty">Nenhuma sala cadastrada.</p>`}</section>${secEquipe()}`;
 }
 
@@ -919,7 +937,7 @@ document.addEventListener("submit",async ev=>{
     const mb=membrosDir.find(m=>norm(m.nome)===norm(nome));
     const id=await novoAluno({nome,whatsapp:f.elements.whatsapp.value.trim(),nascimento:f.elements.nascimento.value,salaId:st.presSala,origem:mb?"membro":"cadastro EBD",membroId:mb?mb.id:""});
     if(id){st.pres.set.add(id);st.pres.mudou=true;f.reset();toast("Aluno cadastrado e marcado presente");setTimeout(lPresenca,200)}return}
-  if(f.id==="fSala"){ev.preventDefault();const v={nome:f.elements.nome.value.trim(),...lerFaixa(f),ordem:+f.elements.ordem.value||99};if(!v.nome)return;if(v.erro){toast(v.erro);return}delete v.erro;
+  if(f.id==="fSala"){ev.preventDefault();const v={nome:f.elements.nome.value.trim(),...lerFaixa(f),ordem:+f.elements.ordem.value||99,adultos:f.elements.adultos.checked};if(!v.nome)return;if(v.erro){toast(v.erro);return}delete v.erro;
     if(await gravar(()=>db.collection("ebd_salas").doc().set(v),"Sala adicionada"))f.reset();return}
 });
 window.addEventListener("beforeunload",e=>{if(st.pres&&st.pres.mudou){e.preventDefault();e.returnValue=""}});
@@ -950,7 +968,7 @@ async function carregarDiretorio(fdb){
   try{
     if(souAdmin){
       const x=await fdb.collection("membros").get();
-      const lista=x.docs.map(y=>{const d=y.data();return {id:y.id,nome:d.nome||"",nascimento:d.nascimento||"",whatsapp:d.whatsapp||""}}).filter(m=>m.nome).sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));
+      const lista=x.docs.map(y=>{const d=y.data();return {id:y.id,nome:d.nome||"",nascimento:d.nascimento||"",whatsapp:d.whatsapp||"",faixa:d.faixa||"",grupo:d.grupo||""}}).filter(m=>m.nome).sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));
       membrosDir=lista;
       const atual=await fdb.collection("config").doc("diretorio_ebd").get();
       if(!atual.exists||JSON.stringify(atual.data().pessoas||[])!==JSON.stringify(lista))await fdb.collection("config").doc("diretorio_ebd").set({pessoas:lista,atualizadoEm:new Date().toISOString()});
@@ -974,7 +992,7 @@ function init(){
     if(!papel){telaLogin(`O e-mail ${meuEmail} ainda não tem acesso. Peça ao administrador para liberar.`,true,true);return}
     if(papel!=="admin"&&!ebdOk){telaLogin(`O e-mail ${meuEmail} não tem acesso à EBD. Peça ao administrador para liberar.`,true,true);return}
     souAdmin=papel==="admin";db=fdb;document.body.classList.remove("sem-acesso");
-    $("#usr").innerHTML=`${esc(meuEmail)} · <a class="lnk" href="./?painel=1">‹ Painel</a> · <button class="lnk" data-act="sair">Sair</button>`;
+    $("#usr").innerHTML=`<a class="btn-painel" href="./?painel=1"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Voltar ao Painel</a><br>${esc(meuEmail)} · <button class="lnk" data-act="sair">Sair</button>`;
     route();
     if(assinado)return;assinado=true;
     assinar("ebd_salas","s",v=>salas=v.filter(s=>s.nome));

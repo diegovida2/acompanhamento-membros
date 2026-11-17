@@ -200,7 +200,7 @@ async function carregarMembros(){
   render();
 }
 async function atualizarDiretorio(docs){
-  try{const lista=docs.map(y=>{const d=y.data();return {id:y.id,nome:d.nome||"",nascimento:d.nascimento||"",whatsapp:d.whatsapp||""}}).filter(m=>m.nome).sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));
+  try{const lista=docs.map(y=>{const d=y.data();return {id:y.id,nome:d.nome||"",nascimento:d.nascimento||"",whatsapp:d.whatsapp||"",faixa:d.faixa||"",grupo:d.grupo||""}}).filter(m=>m.nome).sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));
     const atual=await db.collection("config").doc("diretorio_ebd").get();
     if(!atual.exists||JSON.stringify(atual.data().pessoas||[])!==JSON.stringify(lista))await db.collection("config").doc("diretorio_ebd").set({pessoas:lista,atualizadoEm:new Date().toISOString()})}catch(e){console.warn(e)}
 }
