@@ -289,6 +289,16 @@ h4{margin:0 0 6px;font-size:.95rem}
 .mini.ok{background:color-mix(in srgb,var(--part) 15%,var(--surface));color:var(--part)}
 .mini.vis{background:color-mix(in srgb,var(--conn) 15%,var(--surface));color:var(--conn)}
 .mes-t{margin:18px 0 8px;font-size:1.05rem}
+.escs{display:grid;gap:2px;margin:2px 0 4px}
+.esc-l{display:flex;gap:6px;font-size:.84rem;color:var(--muted);align-items:baseline;min-width:0}
+.esc-l .esc-s{flex:none;min-width:0;max-width:48%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.esc-l .esc-s::after{content:":"}
+.esc-l>span:last-child{color:var(--ink);font-weight:600;min-width:0}
+.esc-l.sel{font-size:.92rem}
+.esc-l.sel .esc-s{color:var(--brand);font-weight:700}
+.esc-l .falta{color:var(--cuid)!important;font-weight:500!important;font-style:italic}
+@media (max-width:720px){.tabs a{font-size:.72rem;padding:10px 1px}}
+
 .abas{display:flex;gap:4px;overflow-x:auto;border-bottom:1px solid var(--line);margin-bottom:14px}
 .abas button{border:0;background:none;padding:10px 14px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap;font-size:.95rem}
 .abas button[aria-selected="true"]{color:var(--brand);border-bottom-color:var(--brand)}
@@ -348,7 +358,7 @@ h4{margin:0 0 6px;font-size:.95rem}
       <a href="#preparo">Preparo</a>
       <a href="#indicadores">Indicadores</a>
       <a href="#alunos">Alunos</a>
-      <a href="#salas">Salas e equipe</a>
+      <a href="#salas">Salas</a>
     </nav>
   </div>
 </header>
@@ -579,11 +589,16 @@ async function salvarDia(campos,ok){return gravar(()=>db.collection("ebd_aulas")
 function grafMes(ds){const vals=ds.map(d=>({d,...contaDia(aulaDe(d,st.sala))}));if(!vals.some(v=>v.total))return "";const max=Math.max(...vals.map(v=>v.total),1);
   return `<section class="panel" style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px"><h3 style="margin:0">Presença no mês</h3><span class="leg"><i class="lg a"></i>Alunos <i class="lg v"></i>Visitantes</span></div>
   <div class="bars" role="img" aria-label="Presentes por domingo">${vals.map(v=>`<div class="bar-col" title="${fmt(v.d)}: ${v.alunos} alunos e ${v.vis} visitantes"><span class="bar-v">${v.total||""}</span><span class="stack" style="height:${v.total/max*100}%"><span class="sv" style="flex:${v.vis}"></span><span class="sa" style="flex:${v.alunos}"></span></span><span class="bar-l">${fmtC(v.d)}</span></div>`).join("")}</div></section>`}
+function escaladosDia(d){
+  const ss=salasOrd();const sel=ss.filter(x=>x.id===st.sala),out=ss.filter(x=>x.id!==st.sala);
+  return [...sel,...out].map(sl=>{const a=aulaDe(d,sl.id);const p=a&&a.professor;
+    return `<span class="esc-l ${sl.id===st.sala?"sel":""}"><span class="esc-s">${esc(sl.nome)}</span><span class="${p?"":"falta"}">${p?esc(p)+(a.licaoNum?` <span class="hint">· Lição ${esc(a.licaoNum)}</span>`:""):"a definir"}</span></span>`}).join("");
+}
 function vDomingos(){
   garantirSala();const ds=domingosDe(st.periodo,st.ref),h=hoje(),px=proxDomingo();
   const tit=st.periodo==="ano"?st.ref.slice(0,4):MESES[+st.ref.slice(5,7)-1]+" de "+st.ref.slice(0,4);
   const card=d=>{const a=aulaDe(d,st.sala),c=contaDia(a),r=a&&a.resumo&&(a.resumo.tema||a.resumo.versiculo),resp=a&&(a.responsaveis||[]).length,fot=(a&&a.fotosQtd)||0,feito=c.total>0;
-    return `<button class="dom ${d===px?"prox":""} ${d<h&&!feito?"pend":""}" data-dia="${d}"><span class="dom-d"><b>${d.slice(8,10)}</b><span>${MESES[+d.slice(5,7)-1].slice(0,3)}</span></span><span class="dom-i"><span class="t">${d===h?"Hoje":d===px?"Próximo domingo":fmt(d)}</span><span class="m">${a&&a.professor?"Escala: "+esc(a.professor):"Sem professor escalado"}</span><span class="dom-chips"><span class="mini ${feito?"ok":""}">${feito?`${c.alunos} ${c.alunos===1?"aluno":"alunos"}${c.vis?" · "+c.vis+" visit.":""}`:"Chamada"}</span><span class="mini ${r?"ok":""}">Resumo</span><span class="mini ${resp?"ok":""}">Responsáveis</span><span class="mini ${fot?"ok":""}">${fot?fot+" fotos":"Fotos"}</span></span></span></button>`};
+    return `<button class="dom ${d===px?"prox":""} ${d<h&&!feito?"pend":""}" data-dia="${d}"><span class="dom-d"><b>${d.slice(8,10)}</b><span>${MESES[+d.slice(5,7)-1].slice(0,3)}</span></span><span class="dom-i"><span class="t">${d===h?"Hoje":d===px?"Próximo domingo":fmt(d)}</span><span class="escs">${escaladosDia(d)}</span><span class="dom-chips"><span class="mini ${feito?"ok":""}">${feito?`${c.alunos} ${c.alunos===1?"aluno":"alunos"}${c.vis?" · "+c.vis+" visit.":""}`:"Chamada"}</span><span class="mini ${r?"ok":""}">Resumo</span><span class="mini ${resp?"ok":""}">Responsáveis</span><span class="mini ${fot?"ok":""}">${fot?fot+" fotos":"Fotos"}</span></span></span></button>`};
   const corpo=st.periodo==="ano"?[...Array(12).keys()].map(m=>{const dm=ds.filter(d=>+d.slice(5,7)===m+1);return `<h3 class="mes-t">${MESES[m]}</h3><div class="doms">${dm.map(card).join("")}</div>`}).join(""):`<div class="doms">${ds.map(card).join("")}</div>`;
   return `<div class="view-title"><div><h2>Domingos</h2><p class="sub">Toque no domingo para fazer a chamada e o registro da aula</p></div><div class="mes-nav"><button class="btn sm" data-ref="-1" aria-label="Anterior">‹</button><b>${tit}</b><button class="btn sm" data-ref="1" aria-label="Próximo">›</button></div></div>
   <div class="toolbar">${salaSel()}<div class="seg" role="group" aria-label="Período"><button data-per="mes" aria-pressed="${st.periodo==="mes"}">Mês</button><button data-per="ano" aria-pressed="${st.periodo==="ano"}">Ano</button></div></div>
